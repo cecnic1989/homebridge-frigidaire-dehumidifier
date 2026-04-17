@@ -1,29 +1,31 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service } from 'homebridge';
 
-import { ExamplePlatformAccessory } from './platformAccessory.js';
+import { ElectroluxClient } from './api/electroluxClient.js';
+import type { Appliance, FrigidaireDehumidifierConfig } from './api/types.js';
+import { DehumidifierAccessory } from './accessories/dehumidifierAccessory.js';
+import { HumiditySensorAccessory } from './accessories/humiditySensorAccessory.js';
+import { TemperatureSensorAccessory } from './accessories/temperatureSensorAccessory.js';
+import { BucketFullAccessory } from './accessories/bucketFullAccessory.js';
+import { AirPurifierAccessory } from './accessories/airPurifierAccessory.js';
+import { PumpSwitchAccessory } from './accessories/pumpSwitchAccessory.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 
-// This is only required when using Custom Services and Characteristics not support by HomeKit
-import { EveHomeKitTypes } from 'homebridge-lib/EveHomeKitTypes';
-
-/**
- * HomebridgePlatform
- * This class is the main constructor for your plugin, this is where you should
- * parse the user config and discover/register accessories with Homebridge.
- */
-export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
+export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
   public readonly Characteristic: typeof Characteristic;
 
-  // this is used to track restored cached accessories
   public readonly accessories: Map<string, PlatformAccessory> = new Map();
-  public readonly discoveredCacheUUIDs: string[] = [];
+  private readonly discoveredUUIDs: Set<string> = new Set();
+  private readonly dehumidifierAccessories: Map<string, DehumidifierAccessory> = new Map();
+  private readonly humiditySensorAccessories: Map<string, HumiditySensorAccessory> = new Map();
+  private readonly temperatureSensorAccessories: Map<string, TemperatureSensorAccessory> = new Map();
+  private readonly bucketFullAccessories: Map<string, BucketFullAccessory> = new Map();
+  private readonly airPurifierAccessories: Map<string, AirPurifierAccessory> = new Map();
+  private readonly pumpSwitchAccessories: Map<string, PumpSwitchAccessory> = new Map();
 
-  // This is only required when using Custom Services and Characteristics not support by HomeKit
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public readonly CustomServices: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public readonly CustomCharacteristics: any;
+  public client!: ElectroluxClient;
+  private pollTimer?: ReturnType<typeof setInterval>;
+  public readonly pluginConfig: FrigidaireDehumidifierConfig;
 
   constructor(
     public readonly log: Logging,
@@ -32,119 +34,162 @@ export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
   ) {
     this.Service = api.hap.Service;
     this.Characteristic = api.hap.Characteristic;
+    this.pluginConfig = config as FrigidaireDehumidifierConfig;
 
-    // This is only required when using Custom Services and Characteristics not support by HomeKit
-    this.CustomServices = new EveHomeKitTypes(this.api).Services;
-    this.CustomCharacteristics = new EveHomeKitTypes(this.api).Characteristics;
+    if (!this.pluginConfig.auth?.username || !this.pluginConfig.auth?.password) {
+      this.log.error('Missing auth credentials in config. Unregistering cached accessories.');
+      this.api.on('didFinishLaunching', () => this.unregisterAll());
+      return;
+    }
 
-    this.log.debug('Finished initializing platform:', this.config.name);
+    this.client = new ElectroluxClient(
+      this.pluginConfig.auth.username,
+      this.pluginConfig.auth.password,
+      this.log,
+    );
 
-    // When this event is fired it means Homebridge has restored all cached accessories from disk.
-    // Dynamic Platform plugins should only register new accessories after this event was fired,
-    // in order to ensure they weren't added to homebridge already. This event can also be used
-    // to start discovery of new accessories.
     this.api.on('didFinishLaunching', () => {
-      log.debug('Executed didFinishLaunching callback');
-      // run the method to discover / register your devices as accessories
-      this.discoverDevices();
+      this.startPlugin().catch((err) => {
+        this.log.error('Plugin startup failed:', (err as Error).message);
+      });
+    });
+
+    this.api.on('shutdown', () => {
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer);
+      }
     });
   }
 
-  /**
-   * This function is invoked when homebridge restores cached accessories from disk at startup.
-   * It should be used to set up event handlers for characteristics and update respective values.
-   */
   configureAccessory(accessory: PlatformAccessory) {
     this.log.info('Loading accessory from cache:', accessory.displayName);
-
-    // add the restored accessory to the accessories cache, so we can track if it has already been registered
     this.accessories.set(accessory.UUID, accessory);
   }
 
-  /**
-   * This is an example method showing how to register discovered accessories.
-   * Accessories must only be registered once, previously created accessories
-   * must not be registered again to prevent "duplicate UUID" errors.
-   */
-  discoverDevices() {
-    // EXAMPLE ONLY
-    // A real plugin you would discover accessories from the local network, cloud services
-    // or a user-defined array in the platform config.
-    const exampleDevices = [
-      {
-        exampleUniqueId: 'ABCD',
-        exampleDisplayName: 'Bedroom',
-      },
-      {
-        exampleUniqueId: 'EFGH',
-        exampleDisplayName: 'Kitchen',
-      },
-      {
-        // This is an example of a device which uses a Custom Service
-        exampleUniqueId: 'IJKL',
-        exampleDisplayName: 'Backyard',
-        CustomService: 'AirPressureSensor',
-      },
-    ];
+  private unregisterAll(): void {
+    if (this.accessories.size === 0) {
+      return;
+    }
+    const list = Array.from(this.accessories.values());
+    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, list);
+    this.accessories.clear();
+  }
 
-    // loop over the discovered devices and register each one if it has not already been registered
-    for (const device of exampleDevices) {
-      // generate a unique id for the accessory this should be generated from
-      // something globally unique, but constant, for example, the device serial
-      // number or MAC address
-      const uuid = this.api.hap.uuid.generate(device.exampleUniqueId);
-
-      // see if an accessory with the same uuid has already been registered and restored from
-      // the cached devices we stored in the `configureAccessory` method above
-      const existingAccessory = this.accessories.get(uuid);
-
-      if (existingAccessory) {
-        // the accessory already exists
-        this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
-
-        // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
-        // existingAccessory.context.device = device;
-        // this.api.updatePlatformAccessories([existingAccessory]);
-
-        // create the accessory handler for the restored accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, existingAccessory);
-
-        // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
-        // remove platform accessories when no longer present
-        // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-        // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-      } else {
-        // the accessory does not yet exist, so we need to create it
-        this.log.info('Adding new accessory:', device.exampleDisplayName);
-
-        // create a new accessory
-        const accessory = new this.api.platformAccessory(device.exampleDisplayName, uuid);
-
-        // store a copy of the device object in the `accessory.context`
-        // the `context` property can be used to store any data about the accessory you may need
-        accessory.context.device = device;
-
-        // create the accessory handler for the newly create accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, accessory);
-
-        // link the accessory to your platform
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      }
-
-      // push into discoveredCacheUUIDs
-      this.discoveredCacheUUIDs.push(uuid);
+  private async startPlugin(): Promise<void> {
+    try {
+      this.log.info('Logging in to Electrolux API...');
+      await this.client.login();
+      this.log.info('Login successful.');
+    } catch (err) {
+      this.log.error('Login failed:', (err as Error).message);
+      return;
     }
 
-    // you can also deal with accessories from the cache which are no longer present by removing them from Homebridge
-    // for example, if your plugin logs into a cloud account to retrieve a device list, and a user has previously removed a device
-    // from this cloud account, then this device will no longer be present in the device list but will still be in the Homebridge cache
+    await this.discoverDevices();
+
+    const interval = Math.max(15, this.pluginConfig.pollInterval ?? 90) * 1000;
+    this.log.info('Polling every %ds', interval / 1000);
+    this.pollTimer = setInterval(() => this.pollDevices(), interval);
+  }
+
+  private async discoverDevices(): Promise<void> {
+    let appliances: Appliance[];
+    try {
+      appliances = await this.client.getAppliances();
+    } catch (err) {
+      this.log.error('Failed to discover devices:', (err as Error).message);
+      return;
+    }
+
+    const excluded = new Set(this.pluginConfig.excludedDevices ?? []);
+
+    for (const appliance of appliances) {
+      if (excluded.has(appliance.applianceId)) {
+        this.log.info('Excluding device: %s (%s)', appliance.applianceData.applianceName, appliance.applianceId);
+        continue;
+      }
+
+      const uuid = this.api.hap.uuid.generate(appliance.applianceId);
+      this.discoveredUUIDs.add(uuid);
+
+      const existingAccessory = this.accessories.get(uuid);
+      if (existingAccessory) {
+        this.log.info('Restoring accessory from cache:', existingAccessory.displayName);
+        existingAccessory.context.device = appliance;
+        this.setupAccessory(existingAccessory, appliance);
+        continue;
+      }
+
+      this.log.info('Adding new accessory: %s (%s)', appliance.applianceData.applianceName, appliance.applianceData.modelName);
+      const accessory = new this.api.platformAccessory(appliance.applianceData.applianceName, uuid);
+      accessory.context.device = appliance;
+      this.setupAccessory(accessory, appliance);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    }
+
+    // Remove stale accessories
     for (const [uuid, accessory] of this.accessories) {
-      if (!this.discoveredCacheUUIDs.includes(uuid)) {
-        this.log.info('Removing existing accessory from cache:', accessory.displayName);
+      if (!this.discoveredUUIDs.has(uuid)) {
+        this.log.info('Removing stale accessory:', accessory.displayName);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       }
+    }
+  }
+
+  private setupAccessory(accessory: PlatformAccessory, appliance: Appliance): void {
+    const id = appliance.applianceId;
+
+    const dehuAccessory = new DehumidifierAccessory(this, accessory);
+    this.dehumidifierAccessories.set(id, dehuAccessory);
+
+    const humiditySensor = new HumiditySensorAccessory(this, accessory);
+    this.humiditySensorAccessories.set(id, humiditySensor);
+
+    if (appliance.properties.reported.ambientTemperatureC !== undefined
+        && appliance.properties.reported.ambientTemperatureC !== null) {
+      const tempSensor = new TemperatureSensorAccessory(this, accessory);
+      this.temperatureSensorAccessories.set(id, tempSensor);
+    }
+
+    const bucketFull = new BucketFullAccessory(this, accessory);
+    this.bucketFullAccessories.set(id, bucketFull);
+
+    if (this.pluginConfig.enableAirPurifier !== false && appliance.properties.reported.cleanAirMode !== undefined) {
+      const airAccessory = new AirPurifierAccessory(this, accessory);
+      this.airPurifierAccessories.set(id, airAccessory);
+    }
+
+    if (this.pluginConfig.enablePumpSwitch !== false && appliance.properties.reported.condensatePump !== undefined) {
+      const pumpAccessory = new PumpSwitchAccessory(this, accessory);
+      this.pumpSwitchAccessories.set(id, pumpAccessory);
+    }
+  }
+
+  private async pollDevices(): Promise<void> {
+    let appliances: Appliance[];
+    try {
+      appliances = await this.client.getAppliances();
+    } catch (err) {
+      this.log.error('Poll failed:', (err as Error).message);
+      return;
+    }
+
+    for (const appliance of appliances) {
+      const id = appliance.applianceId;
+      const reported = appliance.properties.reported;
+
+      this.log.debug('[%s] humidity=%d%% target=%d%% mode=%s state=%s',
+        appliance.applianceData.applianceName,
+        reported.sensorHumidity, reported.targetHumidity,
+        reported.mode, reported.applianceState,
+      );
+
+      this.dehumidifierAccessories.get(id)?.refreshState(reported);
+      this.humiditySensorAccessories.get(id)?.refreshState(reported);
+      this.temperatureSensorAccessories.get(id)?.refreshState(reported);
+      this.bucketFullAccessories.get(id)?.refreshState(reported);
+      this.airPurifierAccessories.get(id)?.refreshState(reported);
+      this.pumpSwitchAccessories.get(id)?.refreshState(reported);
     }
   }
 }

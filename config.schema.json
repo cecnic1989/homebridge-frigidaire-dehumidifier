@@ -1,17 +1,74 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "FrigidaireDehumidifier",
   "pluginType": "platform",
   "singular": true,
   "strictValidation": false,
+  "headerDisplay": "Homebridge plugin for Frigidaire/Electrolux dehumidifiers via the Electrolux OCP API.",
+  "footerDisplay": "Credentials are the same as your Frigidaire mobile app login.",
   "schema": {
     "type": "object",
-    "required": ["name"],
-    "additionalProperties": false,
+    "required": ["auth"],
     "properties": {
       "name": {
         "title": "Name",
         "type": "string",
-        "default": "Example Dynamic Platform"
+        "default": "Frigidaire Dehumidifier"
+      },
+      "auth": {
+        "title": "Authentication",
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": {
+            "title": "Email",
+            "type": "string",
+            "format": "email",
+            "description": "Frigidaire/Electrolux account email"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string",
+            "description": "Frigidaire/Electrolux account password",
+            "x-schema-form": { "type": "password" }
+          }
+        }
+      },
+      "pollInterval": {
+        "title": "Poll Interval (seconds)",
+        "type": "integer",
+        "default": 90,
+        "minimum": 15,
+        "maximum": 3600,
+        "description": "How often to poll device status"
+      },
+      "dehumidifierMode": {
+        "title": "Default Dehumidifier Mode",
+        "type": "string",
+        "default": "DRY",
+        "oneOf": [
+          { "title": "Dry", "enum": ["DRY"] },
+          { "title": "Continuous", "enum": ["CONTINUOUS"] },
+          { "title": "Quiet", "enum": ["QUIET"] }
+        ],
+        "description": "Mode when HomeKit target is set to DEHUMIDIFIER (non-AUTO)"
+      },
+      "enableAirPurifier": {
+        "title": "Enable Air Purifier",
+        "type": "boolean",
+        "default": true,
+        "description": "Expose clean air mode as AirPurifier accessory"
+      },
+      "enablePumpSwitch": {
+        "title": "Enable Pump Switch",
+        "type": "boolean",
+        "default": true,
+        "description": "Expose condensate pump as switch (supported models only)"
+      },
+      "excludedDevices": {
+        "title": "Excluded Devices",
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Appliance IDs to exclude (find IDs in Homebridge logs)"
       }
     }
   }

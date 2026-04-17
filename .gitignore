@@ -123,4 +123,11 @@ dist
 # Webstorm
 .idea
 
-/test/hbConfig
+# Homebridge dev config (copy from config.json.example, fill in creds locally)
+/test/hbConfig/config.json
+
+# Homebridge runtime state (per-user, contains HomeKit pairing keys)
+/test/hbConfig/auth.json
+/test/hbConfig/accessories/
+/test/hbConfig/persist/
+/test/hbConfig/*.log
