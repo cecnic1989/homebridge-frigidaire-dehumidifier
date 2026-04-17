@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-frigidaire-dehumidifier",
+  "name": "@cecnic1989/homebridge-frigidaire-dehumidifier",
   "displayName": "Frigidaire Dehumidifier",
   "type": "module",
   "version": "0.1.0",
