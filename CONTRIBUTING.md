@@ -30,6 +30,26 @@ npx tsx test/api-test.ts         # prints parsed state per device
 npx tsx test/api-test.ts --raw   # also dumps raw API JSON (useful for new fields)
 ```
 
+## Command Test
+
+Sends a write command to the first appliance and prints before/after state. Use when probing OCP payload shapes or verifying a setter works against a real device without going through HomeKit.
+
+```bash
+npx tsx test/command-test.ts power on|off
+npx tsx test/command-test.ts mode AUTO|DRY|CONTINUOUS|QUIET
+npx tsx test/command-test.ts fan LOW|MIDDLE|HIGH|AUTO
+npx tsx test/command-test.ts lock on|off
+npx tsx test/command-test.ts humidity 45
+npx tsx test/command-test.ts raw '{"executeCommand":"OFF"}'        # arbitrary payload
+npx tsx test/command-test.ts --id <applianceId> power off          # multi-device accounts
+```
+
+## Session caching
+
+Both scripts cache the Electrolux session to `test/hbConfig/.session.json` (gitignored). Without it, each script run does a fresh login and Electrolux caps active sessions (`cas_3403 Too many active login context` → 429). With it, repeated runs reuse tokens and hit the refresh path on expiry.
+
+Delete `.session.json` to force a full re-login.
+
 ## Local Homebridge Dev
 
 Runs a real Homebridge instance. Auto-rebuilds on save.

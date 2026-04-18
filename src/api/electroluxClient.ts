@@ -9,6 +9,16 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export interface SessionSnapshot {
+  accessToken: string;
+  refreshToken: string;
+  tokenExpiresAt: number;
+  gigyaAPIKey: string;
+  gigyaDomain: string;
+  dataCenter: string;
+  regionalBaseURL: string;
+}
+
 export class ElectroluxClient {
   private appToken = '';
   private accessToken = '';
@@ -30,6 +40,28 @@ export class ElectroluxClient {
     await this.getAppToken();
     await this.discoverEndpoints();
     await this.authenticate();
+  }
+
+  exportSession(): SessionSnapshot {
+    return {
+      accessToken: this.accessToken,
+      refreshToken: this.refreshToken,
+      tokenExpiresAt: this.tokenExpiresAt,
+      gigyaAPIKey: this.gigyaAPIKey,
+      gigyaDomain: this.gigyaDomain,
+      dataCenter: this.dataCenter,
+      regionalBaseURL: this.regionalBaseURL,
+    };
+  }
+
+  importSession(snap: SessionSnapshot): void {
+    this.accessToken = snap.accessToken;
+    this.refreshToken = snap.refreshToken;
+    this.tokenExpiresAt = snap.tokenExpiresAt;
+    this.gigyaAPIKey = snap.gigyaAPIKey;
+    this.gigyaDomain = snap.gigyaDomain;
+    this.dataCenter = snap.dataCenter;
+    this.regionalBaseURL = snap.regionalBaseURL;
   }
 
   async ensureAuth(): Promise<void> {

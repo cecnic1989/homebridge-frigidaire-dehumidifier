@@ -41,7 +41,7 @@ export class DehumidifierAccessory {
 
     // Set humidity threshold range — updateValue first so setProps doesn't reject the default 0.
     this.dehumidifierService.getCharacteristic(this.platform.Characteristic.RelativeHumidityDehumidifierThreshold)
-      .updateValue(this.state.targetHumidity ?? 50)
+      .updateValue(this.clampHumidity(this.state.targetHumidity))
       .setProps({ minValue: 35, maxValue: 85, minStep: 5 });
 
     // Set fan speed range
@@ -64,7 +64,7 @@ export class DehumidifierAccessory {
       .onGet(() => this.state.sensorHumidity);
 
     this.dehumidifierService.getCharacteristic(this.platform.Characteristic.RelativeHumidityDehumidifierThreshold)
-      .onGet(() => this.state.targetHumidity)
+      .onGet(() => this.clampHumidity(this.state.targetHumidity))
       .onSet(this.setTargetHumidity.bind(this));
 
     this.dehumidifierService.getCharacteristic(this.platform.Characteristic.RotationSpeed)
@@ -98,7 +98,7 @@ export class DehumidifierAccessory {
     this.dehumidifierService.updateCharacteristic(Characteristic.CurrentHumidifierDehumidifierState, this.currentStateValue());
     this.dehumidifierService.updateCharacteristic(Characteristic.TargetHumidifierDehumidifierState, this.targetStateValue());
     this.dehumidifierService.updateCharacteristic(Characteristic.CurrentRelativeHumidity, state.sensorHumidity);
-    this.dehumidifierService.updateCharacteristic(Characteristic.RelativeHumidityDehumidifierThreshold, state.targetHumidity);
+    this.dehumidifierService.updateCharacteristic(Characteristic.RelativeHumidityDehumidifierThreshold, this.clampHumidity(state.targetHumidity));
     this.dehumidifierService.updateCharacteristic(Characteristic.RotationSpeed, fanSpeedToHAP(state.fanSpeedSetting));
     this.dehumidifierService.updateCharacteristic(Characteristic.WaterLevel, waterLevelToHAP(state));
     this.dehumidifierService.updateCharacteristic(Characteristic.LockPhysicalControls, this.lockValue());
@@ -128,10 +128,10 @@ export class DehumidifierAccessory {
 
   private async setActive(value: CharacteristicValue): Promise<void> {
     const applianceId = (this.accessory.context.device as Appliance).applianceId;
-    const target = value === this.platform.Characteristic.Active.ACTIVE ? 'running' : 'off';
+    const target = value === this.platform.Characteristic.Active.ACTIVE ? 'ON' : 'OFF';
     this.platform.log.info('Setting power to %s', target);
     try {
-      await this.platform.client.sendCommand(applianceId, { applianceState: target });
+      await this.platform.client.sendCommand(applianceId, { executeCommand: target });
     } catch (err) {
       this.platform.log.error('Failed to set power:', (err as Error).message);
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -142,8 +142,8 @@ export class DehumidifierAccessory {
     const applianceId = (this.accessory.context.device as Appliance).applianceId;
     const { Characteristic } = this.platform;
     const mode = value === Characteristic.TargetHumidifierDehumidifierState.HUMIDIFIER_OR_DEHUMIDIFIER
-      ? 'auto'
-      : (this.platform.pluginConfig.dehumidifierMode?.toLowerCase() ?? 'dry');
+      ? 'AUTO'
+      : (this.platform.pluginConfig.dehumidifierMode?.toUpperCase() ?? 'DRY');
     this.platform.log.info('Setting mode to %s', mode);
     try {
       await this.platform.client.sendCommand(applianceId, { mode });
@@ -167,7 +167,7 @@ export class DehumidifierAccessory {
 
   private async setFanSpeed(value: CharacteristicValue): Promise<void> {
     const applianceId = (this.accessory.context.device as Appliance).applianceId;
-    const speed = hapToFanSpeed(value as number).toLowerCase();
+    const speed = hapToFanSpeed(value as number);
     this.platform.log.info('Setting fan speed to %s', speed);
     try {
       await this.platform.client.sendCommand(applianceId, { fanSpeedSetting: speed });
@@ -225,5 +225,15 @@ export class DehumidifierAccessory {
       return Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED;
     }
     return Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED;
+  }
+
+  private clampHumidity(value: number | undefined): number {
+    if (!value || value < 35) {
+      return 35;
+    }
+    if (value > 85) {
+      return 85;
+    }
+    return value;
   }
 }
