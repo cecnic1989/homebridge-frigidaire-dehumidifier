@@ -1,5 +1,8 @@
 # homebridge-frigidaire-dehumidifier
 
+[![npm version](https://img.shields.io/npm/v/@cecnic1989/homebridge-frigidaire-dehumidifier.svg?style=flat-square)](https://www.npmjs.com/package/@cecnic1989/homebridge-frigidaire-dehumidifier)
+[![Build and Lint](https://img.shields.io/github/actions/workflow/status/cecnic1989/homebridge-frigidaire-dehumidifier/build.yml?branch=latest&style=flat-square)](https://github.com/cecnic1989/homebridge-frigidaire-dehumidifier/actions/workflows/build.yml)
+
 Homebridge plugin for Frigidaire / Electrolux smart dehumidifiers. Exposes your dehumidifier to Apple Home via the Electrolux OCP API (same backend the Frigidaire mobile app uses).
 
 ## Features
@@ -17,18 +20,16 @@ Each dehumidifier appears as a single accessory tile with:
 ## Requirements
 
 - Homebridge `^1.8.0` or `^2.0.0-beta.0`
-- Node.js `^22.10.0 || ^24.0.0`
+- Node.js `^20.19.0 || ^22.10.0 || ^24.0.0`
 - A Frigidaire account (same credentials as the Frigidaire mobile app)
 
 ## Installation
 
-Not yet published to npm. Install from GitHub:
-
 ```bash
-sudo npm install -g github:cecnic1989/homebridge-frigidaire-dehumidifier
+sudo npm install -g @cecnic1989/homebridge-frigidaire-dehumidifier
 ```
 
-Or in the Homebridge UI: **Plugins → Install from URL** → paste `https://github.com/cecnic1989/homebridge-frigidaire-dehumidifier`.
+Or in the Homebridge UI: **Plugins** → search `@cecnic1989/homebridge-frigidaire-dehumidifier`.
 
 ## Configuration
 

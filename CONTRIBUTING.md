@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js `^22.10.0 || ^24.0.0`
+- Node.js `^20.19.0 || ^22.10.0 || ^24.0.0`
 - A Frigidaire account with at least one connected dehumidifier
 
 ## Setup
