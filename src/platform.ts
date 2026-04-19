@@ -166,12 +166,20 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       if (existingAccessory) {
         this.log.info('Restoring accessory from cache:', existingAccessory.displayName);
         existingAccessory.context.device = appliance;
+        if (existingAccessory.category !== this.api.hap.Categories.AIR_DEHUMIDIFIER) {
+          existingAccessory.category = this.api.hap.Categories.AIR_DEHUMIDIFIER;
+          this.api.updatePlatformAccessories([existingAccessory]);
+        }
         this.setupAccessory(existingAccessory, appliance);
         continue;
       }
 
       this.log.info('Adding new accessory: %s (%s)', appliance.applianceData.applianceName, appliance.applianceData.modelName);
-      const accessory = new this.api.platformAccessory(appliance.applianceData.applianceName, uuid);
+      const accessory = new this.api.platformAccessory(
+        appliance.applianceData.applianceName,
+        uuid,
+        this.api.hap.Categories.AIR_DEHUMIDIFIER,
+      );
       accessory.context.device = appliance;
       this.setupAccessory(accessory, appliance);
       this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
