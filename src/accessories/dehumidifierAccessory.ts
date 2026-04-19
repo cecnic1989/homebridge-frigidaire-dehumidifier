@@ -131,6 +131,7 @@ export class DehumidifierAccessory {
     this.platform.log.info('Setting power to %s', target);
     try {
       await this.platform.client.sendCommand(applianceId, { executeCommand: target });
+      this.dehumidifierService.updateCharacteristic(this.platform.Characteristic.Active, value);
     } catch (err) {
       this.platform.log.error('Failed to set power:', (err as Error).message);
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -146,6 +147,7 @@ export class DehumidifierAccessory {
     this.platform.log.info('Setting mode to %s', mode);
     try {
       await this.platform.client.sendCommand(applianceId, { mode });
+      this.dehumidifierService.updateCharacteristic(Characteristic.TargetHumidifierDehumidifierState, value);
     } catch (err) {
       this.platform.log.error('Failed to set mode:', (err as Error).message);
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -154,10 +156,14 @@ export class DehumidifierAccessory {
 
   private async setTargetHumidity(value: CharacteristicValue): Promise<void> {
     const applianceId = (this.accessory.context.device as Appliance).applianceId;
-    const rounded = Math.round((value as number) / 5) * 5;
-    this.platform.log.info('Setting target humidity to %d%%', rounded);
+    const clamped = this.clampHumidity(Math.round((value as number) / 5) * 5);
+    this.platform.log.info('Setting target humidity to %d%%', clamped);
     try {
-      await this.platform.client.sendCommand(applianceId, { targetHumidity: rounded });
+      await this.platform.client.sendCommand(applianceId, { targetHumidity: clamped });
+      this.dehumidifierService.updateCharacteristic(
+        this.platform.Characteristic.RelativeHumidityDehumidifierThreshold,
+        clamped,
+      );
     } catch (err) {
       this.platform.log.error('Failed to set target humidity:', (err as Error).message);
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -170,6 +176,7 @@ export class DehumidifierAccessory {
     this.platform.log.info('Setting fan speed to %s', speed);
     try {
       await this.platform.client.sendCommand(applianceId, { fanSpeedSetting: speed });
+      this.dehumidifierService.updateCharacteristic(this.platform.Characteristic.RotationSpeed, value);
     } catch (err) {
       this.platform.log.error('Failed to set fan speed:', (err as Error).message);
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -182,6 +189,7 @@ export class DehumidifierAccessory {
     this.platform.log.info('Setting UI lock to %s', lock);
     try {
       await this.platform.client.sendCommand(applianceId, { uiLockMode: lock });
+      this.dehumidifierService.updateCharacteristic(this.platform.Characteristic.LockPhysicalControls, value);
     } catch (err) {
       this.platform.log.error('Failed to set UI lock:', (err as Error).message);
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
