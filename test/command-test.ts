@@ -11,9 +11,8 @@
  *   npx tsx test/command-test.ts --id <applianceId> power off
  */
 
-import { ElectroluxClient } from '../src/api/electroluxClient.js';
 import type { Appliance, DehumidifierState } from '../src/api/types.js';
-import { ensureLoggedIn, loadCreds, logger } from './shared.js';
+import { buildClient, loadCreds } from './shared.js';
 
 type Payload = Record<string, unknown>;
 
@@ -93,8 +92,8 @@ async function main() {
   const payload = buildPayload(args);
 
   const { username, password } = loadCreds();
-  const client = new ElectroluxClient(username, password, logger);
-  await ensureLoggedIn(client);
+  const client = buildClient(username, password);
+  await client.ensureAuth();
 
   const before = await client.getAppliances();
   const device = pickAppliance(before, id);

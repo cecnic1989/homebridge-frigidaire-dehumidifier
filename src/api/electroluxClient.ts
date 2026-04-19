@@ -19,6 +19,11 @@ export interface SessionSnapshot {
   regionalBaseURL: string;
 }
 
+export interface ElectroluxClientOptions {
+  loadSession?: () => SessionSnapshot | undefined;
+  onSessionUpdate?: (snapshot: SessionSnapshot) => void;
+}
+
 export class ElectroluxClient {
   private appToken = '';
   private accessToken = '';
@@ -34,12 +39,26 @@ export class ElectroluxClient {
     private readonly email: string,
     private readonly password: string,
     private readonly log: Logging,
+    private readonly options: ElectroluxClientOptions = {},
   ) {}
 
+  private notifySessionUpdate(): void {
+    if (!this.options.onSessionUpdate) {
+      return;
+    }
+    try {
+      this.options.onSessionUpdate(this.exportSession());
+    } catch (err) {
+      this.log.warn('onSessionUpdate failed: %s', (err as Error).message);
+    }
+  }
+
   async login(): Promise<void> {
+    this.log.info('Logging in to Electrolux API...');
     await this.getAppToken();
     await this.discoverEndpoints();
     await this.authenticate();
+    this.log.info('Login successful.');
   }
 
   exportSession(): SessionSnapshot {
@@ -67,6 +86,18 @@ export class ElectroluxClient {
   async ensureAuth(): Promise<void> {
     if (this.authPromise) {
       return this.authPromise;
+    }
+
+    if (!this.accessToken && this.options.loadSession) {
+      try {
+        const snap = this.options.loadSession();
+        if (snap?.accessToken) {
+          this.importSession(snap);
+          this.log.info('Restored Electrolux session from cache.');
+        }
+      } catch (err) {
+        this.log.warn('Failed to load cached session: %s', (err as Error).message);
+      }
     }
 
     if (!this.accessToken) {
@@ -313,6 +344,7 @@ export class ElectroluxClient {
     this.accessToken = data.accessToken;
     this.refreshToken = data.refreshToken;
     this.tokenExpiresAt = Date.now() + data.expiresIn * 1000;
+    this.notifySessionUpdate();
   }
 
   private async doRefreshToken(): Promise<void> {
@@ -350,6 +382,7 @@ export class ElectroluxClient {
       this.refreshToken = data.refreshToken;
     }
     this.tokenExpiresAt = Date.now() + data.expiresIn * 1000;
+    this.notifySessionUpdate();
   }
 
   private authHeaders(): Record<string, string> {

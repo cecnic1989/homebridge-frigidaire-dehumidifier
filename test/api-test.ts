@@ -7,15 +7,14 @@
  *   npx tsx test/api-test.ts [--raw]
  */
 
-import { ElectroluxClient } from '../src/api/electroluxClient.js';
-import { ensureLoggedIn, loadCreds, logger } from './shared.js';
+import { buildClient, loadCreds } from './shared.js';
 
 async function main() {
   const { username, password } = loadCreds();
-  const client = new ElectroluxClient(username, password, logger);
+  const client = buildClient(username, password);
 
   console.log('--- Login ---');
-  await ensureLoggedIn(client);
+  await client.ensureAuth();
   console.log('Login OK\n');
 
   console.log('--- Appliances ---');

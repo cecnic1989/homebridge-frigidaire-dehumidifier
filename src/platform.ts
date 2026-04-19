@@ -1,6 +1,10 @@
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service } from 'homebridge';
 
 import { ElectroluxClient } from './api/electroluxClient.js';
+import type { SessionSnapshot } from './api/electroluxClient.js';
 import type { Appliance, FrigidaireDehumidifierConfig } from './api/types.js';
 import { DehumidifierAccessory } from './accessories/dehumidifierAccessory.js';
 import { HumiditySensorAccessory } from './accessories/humiditySensorAccessory.js';
@@ -9,6 +13,8 @@ import { BucketFullAccessory } from './accessories/bucketFullAccessory.js';
 import { AirPurifierAccessory } from './accessories/airPurifierAccessory.js';
 import { PumpSwitchAccessory } from './accessories/pumpSwitchAccessory.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
+
+const SESSION_FILENAME = 'frigidaire-dehumidifier.session.json';
 
 export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
@@ -42,10 +48,26 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       return;
     }
 
+    const sessionPath = join(api.user.storagePath(), SESSION_FILENAME);
     this.client = new ElectroluxClient(
       this.pluginConfig.auth.username,
       this.pluginConfig.auth.password,
       this.log,
+      {
+        loadSession: () => {
+          if (!existsSync(sessionPath)) {
+            return undefined;
+          }
+          return JSON.parse(readFileSync(sessionPath, 'utf8')) as SessionSnapshot;
+        },
+        onSessionUpdate: (snap) => {
+          try {
+            writeFileSync(sessionPath, JSON.stringify(snap, null, 2));
+          } catch (err) {
+            this.log.warn('Failed to persist session: %s', (err as Error).message);
+          }
+        },
+      },
     );
 
     this.api.on('didFinishLaunching', () => {
@@ -77,9 +99,7 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
 
   private async startPlugin(): Promise<void> {
     try {
-      this.log.info('Logging in to Electrolux API...');
-      await this.client.login();
-      this.log.info('Login successful.');
+      await this.client.ensureAuth();
     } catch (err) {
       this.log.error('Login failed:', (err as Error).message);
       return;

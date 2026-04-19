@@ -2,33 +2,45 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import type { ElectroluxClient, SessionSnapshot } from '../src/api/electroluxClient.js';
+import { ElectroluxClient } from '../src/api/electroluxClient.js';
+import type { SessionSnapshot } from '../src/api/electroluxClient.js';
 
 interface PlatformEntry {
   platform: string;
   auth?: { username?: string; password?: string };
 }
 
+export const logger = {
+  info: console.log,
+  warn: console.warn,
+  error: console.error,
+  debug: console.log,
+  log: console.log,
+  success: console.log,
+} as never;
+
 function sessionPath(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   return join(here, 'hbConfig', '.session.json');
 }
 
-export async function ensureLoggedIn(client: ElectroluxClient): Promise<void> {
+export function buildClient(username: string, password: string): ElectroluxClient {
   const path = sessionPath();
-  if (existsSync(path)) {
-    try {
-      const snap = JSON.parse(readFileSync(path, 'utf8')) as SessionSnapshot;
-      client.importSession(snap);
-      await client.ensureAuth();
-      writeFileSync(path, JSON.stringify(client.exportSession(), null, 2));
-      return;
-    } catch (err) {
-      console.warn('Cached session invalid, re-logging in:', (err as Error).message);
-    }
-  }
-  await client.login();
-  writeFileSync(path, JSON.stringify(client.exportSession(), null, 2));
+  return new ElectroluxClient(username, password, logger, {
+    loadSession: () => {
+      if (!existsSync(path)) {
+        return undefined;
+      }
+      return JSON.parse(readFileSync(path, 'utf8')) as SessionSnapshot;
+    },
+    onSessionUpdate: (snap) => {
+      try {
+        writeFileSync(path, JSON.stringify(snap, null, 2));
+      } catch (err) {
+        console.warn('Failed to persist session:', (err as Error).message);
+      }
+    },
+  });
 }
 
 export function loadCreds(): { username: string; password: string } {
@@ -58,12 +70,3 @@ export function loadCreds(): { username: string; password: string } {
 
   return { username: platform.auth.username, password: platform.auth.password };
 }
-
-export const logger = {
-  info: console.log,
-  warn: console.warn,
-  error: console.error,
-  debug: console.log,
-  log: console.log,
-  success: console.log,
-} as never;
