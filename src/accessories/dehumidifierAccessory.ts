@@ -39,7 +39,6 @@ export class DehumidifierAccessory {
         ],
       });
 
-    // Set humidity threshold range — updateValue first so setProps doesn't reject the default 0.
     this.dehumidifierService.getCharacteristic(this.platform.Characteristic.RelativeHumidityDehumidifierThreshold)
       .updateValue(this.clampHumidity(this.state.targetHumidity))
       .setProps({ minValue: 35, maxValue: 85, minStep: 5 });

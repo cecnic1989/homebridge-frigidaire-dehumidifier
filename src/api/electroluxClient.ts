@@ -74,13 +74,7 @@ export class ElectroluxClient {
   }
 
   importSession(snap: SessionSnapshot): void {
-    this.accessToken = snap.accessToken;
-    this.refreshToken = snap.refreshToken;
-    this.tokenExpiresAt = snap.tokenExpiresAt;
-    this.gigyaAPIKey = snap.gigyaAPIKey;
-    this.gigyaDomain = snap.gigyaDomain;
-    this.dataCenter = snap.dataCenter;
-    this.regionalBaseURL = snap.regionalBaseURL;
+    Object.assign(this, snap);
   }
 
   async ensureAuth(): Promise<void> {

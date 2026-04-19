@@ -41,11 +41,11 @@ function buildPayload(argv: string[]): Payload {
   case 'fan':
     return { fanSpeedSetting: req(arg, 'fan LOW|MIDDLE|HIGH|AUTO').toUpperCase() };
   case 'lock':
-    return { uiLockMode: req(arg, 'lock on|off').toUpperCase() };
+    return { uiLockMode: req(arg, 'lock on|off').toLowerCase() === 'on' };
   case 'humidity': {
     const n = parseInt(req(arg, 'humidity <35-85>'), 10);
-    if (Number.isNaN(n)) {
-      fail('humidity must be a number');
+    if (Number.isNaN(n) || n < 35 || n > 85) {
+      fail('humidity must be an integer between 35 and 85');
     }
     return { targetHumidity: n };
   }
