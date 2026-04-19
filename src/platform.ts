@@ -16,6 +16,16 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 
 const SESSION_FILENAME = 'frigidaire-dehumidifier.session.json';
 
+// Minutes between retries when hitting Electrolux's active-session cap (cas_3403).
+// Shortest reported lockout is ~80 minutes; retrying sooner provably extends it.
+const CAP_RETRY_MINUTES = [120, 240, 480, 720];
+// Minutes between retries for transient errors (network, 5xx, bad creds).
+const NORMAL_RETRY_MINUTES = [1, 5, 15];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
   public readonly Characteristic: typeof Characteristic;
@@ -98,18 +108,38 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   }
 
   private async startPlugin(): Promise<void> {
-    try {
-      await this.client.ensureAuth();
-    } catch (err) {
-      this.log.error('Login failed:', (err as Error).message);
-      return;
-    }
+    await this.authenticateWithRetry();
 
     await this.discoverDevices();
 
     const interval = Math.max(15, this.pluginConfig.pollInterval ?? 90) * 1000;
     this.log.info('Polling every %ds', interval / 1000);
     this.pollTimer = setInterval(() => this.pollDevices(), interval);
+  }
+
+  private async authenticateWithRetry(): Promise<void> {
+    let capAttempt = 0;
+    let normalAttempt = 0;
+
+    while (true) {
+      try {
+        await this.client.ensureAuth();
+        return;
+      } catch (err) {
+        const msg = (err as Error).message;
+        const isCap = msg.includes('cas_3403');
+        const schedule = isCap ? CAP_RETRY_MINUTES : NORMAL_RETRY_MINUTES;
+        const attempt = isCap ? capAttempt++ : normalAttempt++;
+        const waitMin = schedule[Math.min(attempt, schedule.length - 1)];
+        this.log.error(
+          'Login failed (%s): %s. Retrying in %dm.',
+          isCap ? 'active-session cap' : 'transient',
+          msg,
+          waitMin,
+        );
+        await sleep(waitMin * 60 * 1000);
+      }
+    }
   }
 
   private async discoverDevices(): Promise<void> {

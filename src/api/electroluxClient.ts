@@ -326,6 +326,8 @@ export class ElectroluxClient {
 
     if (!resp.ok) {
       const body = await resp.text();
+      // platform.ts greps this message for `cas_3403` to trigger long backoff.
+      // Keep the raw body in the thrown error.
       throw new Error(`exchangeToken: HTTP ${resp.status}: ${body}`);
     }
 
