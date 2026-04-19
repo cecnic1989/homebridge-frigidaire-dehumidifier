@@ -39,9 +39,13 @@ export class DehumidifierAccessory {
         ],
       });
 
+    // Don't narrow minValue/maxValue here — iOS Home app renders the "Lowering to X%"
+    // label as (value - minValue) / (maxValue - minValue) * 100 when minValue > 0,
+    // which made 35% display as 0%. clampHumidity below keeps real writes/reads
+    // inside the device's 35-85 operating band.
     this.dehumidifierService.getCharacteristic(this.platform.Characteristic.RelativeHumidityDehumidifierThreshold)
       .updateValue(this.clampHumidity(this.state.targetHumidity))
-      .setProps({ minValue: 35, maxValue: 85, minStep: 5 });
+      .setProps({ minStep: 5 });
 
     // Set fan speed range
     this.dehumidifierService.getCharacteristic(this.platform.Characteristic.RotationSpeed)
