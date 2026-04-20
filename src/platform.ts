@@ -159,68 +159,122 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
         continue;
       }
 
-      const uuid = this.api.hap.uuid.generate(appliance.applianceId);
-      this.discoveredUUIDs.add(uuid);
-
-      const existingAccessory = this.accessories.get(uuid);
-      if (existingAccessory) {
-        this.log.info('Restoring accessory from cache:', existingAccessory.displayName);
-        existingAccessory.context.device = appliance;
-        if (existingAccessory.category !== this.api.hap.Categories.AIR_DEHUMIDIFIER) {
-          existingAccessory.category = this.api.hap.Categories.AIR_DEHUMIDIFIER;
-          this.api.updatePlatformAccessories([existingAccessory]);
-        }
-        this.setupAccessory(existingAccessory, appliance);
-        continue;
-      }
-
-      this.log.info('Adding new accessory: %s (%s)', appliance.applianceData.applianceName, appliance.applianceData.modelName);
-      const accessory = new this.api.platformAccessory(
-        appliance.applianceData.applianceName,
-        uuid,
-        this.api.hap.Categories.AIR_DEHUMIDIFIER,
-      );
-      accessory.context.device = appliance;
-      this.setupAccessory(accessory, appliance);
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      this.log.info('Discovering: %s (%s)', appliance.applianceData.applianceName, appliance.applianceData.modelName);
+      this.setupDehumidifierAccessory(appliance);
+      this.setupHumiditySensorAccessory(appliance);
+      this.setupTemperatureSensorAccessory(appliance);
+      this.setupBucketFullAccessory(appliance);
+      this.setupAirPurifierAccessory(appliance);
+      this.setupPumpSwitchAccessory(appliance);
     }
 
-    // Remove stale accessories
+    // Remove stale accessories (devices removed from account, or features disabled)
     for (const [uuid, accessory] of this.accessories) {
       if (!this.discoveredUUIDs.has(uuid)) {
         this.log.info('Removing stale accessory:', accessory.displayName);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        this.accessories.delete(uuid);
       }
     }
   }
 
-  private setupAccessory(accessory: PlatformAccessory, appliance: Appliance): void {
-    const id = appliance.applianceId;
-
-    const dehuAccessory = new DehumidifierAccessory(this, accessory);
-    this.dehumidifierAccessories.set(id, dehuAccessory);
-
-    const humiditySensor = new HumiditySensorAccessory(this, accessory);
-    this.humiditySensorAccessories.set(id, humiditySensor);
-
-    if (appliance.properties.reported.ambientTemperatureC !== undefined
-        && appliance.properties.reported.ambientTemperatureC !== null) {
-      const tempSensor = new TemperatureSensorAccessory(this, accessory);
-      this.temperatureSensorAccessories.set(id, tempSensor);
+  private registerOrReuse(
+    uuid: string,
+    displayName: string,
+    category: number,
+    appliance: Appliance,
+  ): PlatformAccessory {
+    this.discoveredUUIDs.add(uuid);
+    const existing = this.accessories.get(uuid);
+    if (existing) {
+      existing.context.device = appliance;
+      if (existing.category !== category) {
+        existing.category = category;
+        this.api.updatePlatformAccessories([existing]);
+      }
+      return existing;
     }
+    const accessory = new this.api.platformAccessory(displayName, uuid, category);
+    accessory.context.device = appliance;
+    this.accessories.set(uuid, accessory);
+    this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    return accessory;
+  }
 
-    const bucketFull = new BucketFullAccessory(this, accessory);
-    this.bucketFullAccessories.set(id, bucketFull);
+  private setupDehumidifierAccessory(appliance: Appliance): void {
+    const uuid = this.api.hap.uuid.generate(appliance.applianceId);
+    const accessory = this.registerOrReuse(
+      uuid,
+      appliance.applianceData.applianceName,
+      this.api.hap.Categories.AIR_DEHUMIDIFIER,
+      appliance,
+    );
+    this.dehumidifierAccessories.set(appliance.applianceId, new DehumidifierAccessory(this, accessory));
+  }
 
-    if (this.pluginConfig.enableAirPurifier !== false && appliance.properties.reported.cleanAirMode !== undefined) {
-      const airAccessory = new AirPurifierAccessory(this, accessory);
-      this.airPurifierAccessories.set(id, airAccessory);
+  private setupHumiditySensorAccessory(appliance: Appliance): void {
+    const uuid = this.api.hap.uuid.generate(`${appliance.applianceId}-humidity`);
+    const accessory = this.registerOrReuse(
+      uuid,
+      `${appliance.applianceData.applianceName} Humidity`,
+      this.api.hap.Categories.SENSOR,
+      appliance,
+    );
+    this.humiditySensorAccessories.set(appliance.applianceId, new HumiditySensorAccessory(this, accessory));
+  }
+
+  private setupTemperatureSensorAccessory(appliance: Appliance): void {
+    const temp = appliance.properties.reported.ambientTemperatureC;
+    if (temp === undefined || temp === null) {
+      return;
     }
+    const uuid = this.api.hap.uuid.generate(`${appliance.applianceId}-temperature`);
+    const accessory = this.registerOrReuse(
+      uuid,
+      `${appliance.applianceData.applianceName} Temperature`,
+      this.api.hap.Categories.SENSOR,
+      appliance,
+    );
+    this.temperatureSensorAccessories.set(appliance.applianceId, new TemperatureSensorAccessory(this, accessory));
+  }
 
-    if (this.pluginConfig.enablePumpSwitch !== false && appliance.properties.reported.condensatePump !== undefined) {
-      const pumpAccessory = new PumpSwitchAccessory(this, accessory);
-      this.pumpSwitchAccessories.set(id, pumpAccessory);
+  private setupBucketFullAccessory(appliance: Appliance): void {
+    const uuid = this.api.hap.uuid.generate(`${appliance.applianceId}-bucket`);
+    const accessory = this.registerOrReuse(
+      uuid,
+      `${appliance.applianceData.applianceName} Bucket`,
+      this.api.hap.Categories.SENSOR,
+      appliance,
+    );
+    this.bucketFullAccessories.set(appliance.applianceId, new BucketFullAccessory(this, accessory));
+  }
+
+  private setupAirPurifierAccessory(appliance: Appliance): void {
+    if (this.pluginConfig.enableAirPurifier === false || appliance.properties.reported.cleanAirMode === undefined) {
+      return;
     }
+    const uuid = this.api.hap.uuid.generate(`${appliance.applianceId}-airpurifier`);
+    const accessory = this.registerOrReuse(
+      uuid,
+      `${appliance.applianceData.applianceName} Air Purifier`,
+      this.api.hap.Categories.AIR_PURIFIER,
+      appliance,
+    );
+    this.airPurifierAccessories.set(appliance.applianceId, new AirPurifierAccessory(this, accessory));
+  }
+
+  private setupPumpSwitchAccessory(appliance: Appliance): void {
+    if (this.pluginConfig.enablePumpSwitch === false || appliance.properties.reported.condensatePump === undefined) {
+      return;
+    }
+    const uuid = this.api.hap.uuid.generate(`${appliance.applianceId}-pump`);
+    const accessory = this.registerOrReuse(
+      uuid,
+      `${appliance.applianceData.applianceName} Pump`,
+      this.api.hap.Categories.SWITCH,
+      appliance,
+    );
+    this.pumpSwitchAccessories.set(appliance.applianceId, new PumpSwitchAccessory(this, accessory));
   }
 
   private async pollDevices(): Promise<void> {

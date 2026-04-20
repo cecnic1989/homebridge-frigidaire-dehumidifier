@@ -7,13 +7,12 @@ Homebridge plugin for Frigidaire / Electrolux smart dehumidifiers. Exposes your 
 
 ## Features
 
-Each dehumidifier appears as a single accessory tile with:
+Each physical dehumidifier is split into multiple Home app tiles so each sensor and control can be individually named, moved between rooms, and used in HomeKit automations:
 
-- **Dehumidifier controls** — power, mode (Auto / Dry / Continuous / Quiet), target humidity, fan speed, child lock
-- **Humidity sensor** — room humidity as a first-class sensor (tiles, widgets, Siri)
+- **Dehumidifier** — power, mode (Auto / Dry / Continuous / Quiet), target humidity, fan speed, child lock, filter indicator
+- **Humidity sensor** — room humidity
 - **Temperature sensor** — ambient temperature (when reported by device)
-- **Bucket full sensor** — `LeakSensor` triggers when water tank fills (works on both Husky and DH models)
-- **Filter change indicator** — alerts when filter needs cleaning or replacement
+- **Water bucket** — `LeakSensor` triggers when water tank fills (works on both Husky and DH models)
 - **Air purifier** — clean air mode control (supported models only)
 - **Condensate pump switch** — pump control (supported models only)
 
