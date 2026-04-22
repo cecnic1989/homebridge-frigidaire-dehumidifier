@@ -57,9 +57,6 @@ All other fields optional — see table for defaults.
 | `auth.password` | required | Frigidaire account password |
 | `pollInterval` | `90` | Poll interval in seconds (min 15, max 3600) |
 | `dehumidifierMode` | `"DRY"` | Mode when HomeKit target set to dehumidifier — `DRY` / `CONTINUOUS` / `QUIET` |
-| `enableAirPurifier` | `true` | Expose clean air mode as AirPurifier service |
-| `enablePumpSwitch` | `true` | Expose condensate pump as Switch service |
-| `excludedDevices` | `[]` | Appliance IDs to exclude (find in Homebridge logs) |
 
 ## Status
 

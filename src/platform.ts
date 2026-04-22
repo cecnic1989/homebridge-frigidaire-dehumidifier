@@ -151,14 +151,7 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       return;
     }
 
-    const excluded = new Set(this.pluginConfig.excludedDevices ?? []);
-
     for (const appliance of appliances) {
-      if (excluded.has(appliance.applianceId)) {
-        this.log.info('Excluding device: %s (%s)', appliance.applianceData.applianceName, appliance.applianceId);
-        continue;
-      }
-
       this.log.info('Discovering: %s (%s)', appliance.applianceData.applianceName, appliance.applianceData.modelName);
       this.setupDehumidifierAccessory(appliance);
       this.setupHumiditySensorAccessory(appliance);
@@ -250,7 +243,7 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   }
 
   private setupAirPurifierAccessory(appliance: Appliance): void {
-    if (this.pluginConfig.enableAirPurifier === false || appliance.properties.reported.cleanAirMode === undefined) {
+    if (appliance.properties.reported.cleanAirMode === undefined) {
       return;
     }
     const uuid = this.api.hap.uuid.generate(`${appliance.applianceId}-airpurifier`);
@@ -264,7 +257,7 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   }
 
   private setupPumpSwitchAccessory(appliance: Appliance): void {
-    if (this.pluginConfig.enablePumpSwitch === false || appliance.properties.reported.condensatePump === undefined) {
+    if (appliance.properties.reported.condensatePump === undefined) {
       return;
     }
     const uuid = this.api.hap.uuid.generate(`${appliance.applianceId}-pump`);

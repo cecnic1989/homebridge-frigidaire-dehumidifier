@@ -45,7 +45,4 @@ export interface FrigidaireDehumidifierConfig extends PlatformConfig {
   };
   pollInterval?: number;
   dehumidifierMode?: string;
-  enableAirPurifier?: boolean;
-  enablePumpSwitch?: boolean;
-  excludedDevices?: string[];
 }

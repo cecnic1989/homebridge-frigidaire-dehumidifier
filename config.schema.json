@@ -52,24 +52,6 @@
         ],
         "description": "Mode when HomeKit target is set to DEHUMIDIFIER (non-AUTO)"
       },
-      "enableAirPurifier": {
-        "title": "Enable Air Purifier",
-        "type": "boolean",
-        "default": true,
-        "description": "Expose clean air mode as AirPurifier accessory"
-      },
-      "enablePumpSwitch": {
-        "title": "Enable Pump Switch",
-        "type": "boolean",
-        "default": true,
-        "description": "Expose condensate pump as switch (supported models only)"
-      },
-      "excludedDevices": {
-        "title": "Excluded Devices",
-        "type": "array",
-        "items": { "type": "string" },
-        "description": "Appliance IDs to exclude (find IDs in Homebridge logs)"
-      }
     }
   }
 }
