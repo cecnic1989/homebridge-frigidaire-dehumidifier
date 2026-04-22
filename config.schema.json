@@ -51,7 +51,7 @@
           { "title": "Quiet", "enum": ["QUIET"] }
         ],
         "description": "Mode when HomeKit target is set to DEHUMIDIFIER (non-AUTO)"
-      },
+      }
     }
   }
 }
