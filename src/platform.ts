@@ -12,9 +12,13 @@ import { TemperatureSensorAccessory } from './accessories/temperatureSensorAcces
 import { BucketFullAccessory } from './accessories/bucketFullAccessory.js';
 import { AirPurifierAccessory } from './accessories/airPurifierAccessory.js';
 import { PumpSwitchAccessory } from './accessories/pumpSwitchAccessory.js';
+import { AlertChecker } from './alerts/checker.js';
+import { loadAlertState, saveAlertState } from './alerts/state.js';
+import { WebhookNotifier } from './alerts/webhookNotifier.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 
 const SESSION_FILENAME = 'frigidaire-dehumidifier.session.json';
+const ALERT_STATE_FILENAME = 'frigidaire-dehumidifier.alerts.json';
 
 // Minutes between retries when hitting Electrolux's active-session cap (cas_3403).
 // Shortest reported lockout is ~80 minutes; retrying sooner provably extends it.
@@ -42,6 +46,8 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   public client!: ElectroluxClient;
   private pollTimer?: ReturnType<typeof setInterval>;
   public readonly pluginConfig: FrigidaireDehumidifierConfig;
+  private alertChecker?: AlertChecker;
+  private notifier?: WebhookNotifier;
 
   constructor(
     public readonly log: Logging,
@@ -80,17 +86,57 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       },
     );
 
+    this.setupNotifications();
+
     this.api.on('didFinishLaunching', () => {
-      this.startPlugin().catch((err) => {
-        this.log.error('Plugin startup failed:', (err as Error).message);
-      });
+      this.startPlugin()
+        .then(() => this.notifier?.notify('Dehumidifier Monitor: Service started.'))
+        .catch((err) => {
+          this.log.error('Plugin startup failed:', (err as Error).message);
+        });
     });
 
     this.api.on('shutdown', () => {
       if (this.pollTimer) {
         clearInterval(this.pollTimer);
       }
+      // Fire-and-forget — Homebridge shutdown won't wait on async hooks.
+      this.notifier?.notify('Dehumidifier Monitor: Service stopped.');
     });
+  }
+
+  private setupNotifications(): void {
+    const cfg = this.pluginConfig.notifications;
+    if (!cfg?.enabled) {
+      return;
+    }
+    if (!cfg.url) {
+      this.log.error('Notifications enabled but `notifications.url` is missing — disabling.');
+      return;
+    }
+
+    this.notifier = new WebhookNotifier({
+      url: cfg.url,
+      title: cfg.title ?? 'Dehumidifier Monitor',
+      priority: cfg.priority ?? 'high',
+      tags: cfg.tags ?? 'droplet',
+      log: this.log,
+    });
+
+    const statePath = join(this.api.user.storagePath(), ALERT_STATE_FILENAME);
+    const state = loadAlertState(statePath, this.log);
+    this.alertChecker = new AlertChecker(
+      {
+        cooldownMs: (cfg.cooldownMinutes ?? 60) * 60 * 1000,
+        humidityThreshold: cfg.humidityThreshold ?? 60,
+        alerts: cfg.alerts ?? {},
+      },
+      state,
+      this.log,
+      () => saveAlertState(statePath, state, this.log),
+    );
+
+    this.log.info('Notifications enabled — POSTing alerts to %s', cfg.url);
   }
 
   configureAccessory(accessory: PlatformAccessory) {
@@ -275,7 +321,11 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
     try {
       appliances = await this.client.getAppliances();
     } catch (err) {
-      this.log.error('Poll failed:', (err as Error).message);
+      const msg = (err as Error).message;
+      this.log.error('Poll failed:', msg);
+      await this.dispatchAlerts(
+        this.alertChecker?.checkAPIError(`Dehumidifier Monitor: API error — ${msg}`),
+      );
       return;
     }
 
@@ -295,6 +345,26 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       this.bucketFullAccessories.get(id)?.refreshState(reported);
       this.airPurifierAccessories.get(id)?.refreshState(reported);
       this.pumpSwitchAccessories.get(id)?.refreshState(reported);
+
+      if (!this.alertChecker) {
+        continue;
+      }
+      try {
+        const isOnline = !appliance.connectionState || appliance.connectionState.toLowerCase() !== 'disconnected';
+        const alerts = this.alertChecker.checkAppliance({ reported, isOnline });
+        await this.dispatchAlerts(alerts);
+      } catch (err) {
+        this.log.warn('Alert check failed for %s: %s', appliance.applianceData.applianceName, (err as Error).message);
+      }
+    }
+  }
+
+  private async dispatchAlerts(alerts: { message: string }[] | undefined): Promise<void> {
+    if (!alerts || !this.notifier) {
+      return;
+    }
+    for (const alert of alerts) {
+      await this.notifier.notify(alert.message);
     }
   }
 }

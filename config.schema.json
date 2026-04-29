@@ -51,7 +51,144 @@
           { "title": "Quiet", "enum": ["QUIET"] }
         ],
         "description": "Mode when HomeKit target is set to DEHUMIDIFIER (non-AUTO)"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "title": "Enable Webhook Notifications",
+            "type": "boolean",
+            "default": false,
+            "description": "POST anomaly alerts (humidity trends, freeze risk, frequent cycling, etc.) to a webhook URL. Works with ntfy.sh out of the box."
+          },
+          "url": {
+            "title": "Webhook URL",
+            "type": "string",
+            "format": "uri",
+            "description": "Where to POST alerts. For ntfy.sh, use https://ntfy.sh/<your-topic>."
+          },
+          "cooldownMinutes": {
+            "title": "Per-alert Cooldown (minutes)",
+            "type": "integer",
+            "default": 60,
+            "minimum": 1,
+            "description": "Minimum time between repeats of the same alert type."
+          },
+          "humidityThreshold": {
+            "title": "High-humidity Threshold (%)",
+            "type": "integer",
+            "default": 60,
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Used by the high-humidity alert."
+          },
+          "title": {
+            "title": "Notification Title",
+            "type": "string",
+            "default": "Dehumidifier Monitor",
+            "description": "Sent as the `Title` header — ntfy uses this as the notification title."
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string",
+            "default": "high",
+            "oneOf": [
+              { "title": "Min", "enum": ["min"] },
+              { "title": "Low", "enum": ["low"] },
+              { "title": "Default", "enum": ["default"] },
+              { "title": "High", "enum": ["high"] },
+              { "title": "Max", "enum": ["max"] }
+            ],
+            "description": "Sent as the `Priority` header."
+          },
+          "tags": {
+            "title": "Tags",
+            "type": "string",
+            "default": "droplet",
+            "description": "Sent as the `Tags` header — comma-separated. ntfy renders these as emoji."
+          },
+          "alerts": {
+            "type": "object",
+            "title": "Alert Types",
+            "properties": {
+              "bucketFull": { "title": "Bucket full", "type": "boolean", "default": true, "description": "Already exposed as a HomeKit LeakSensor — disable to avoid duplicate signals." },
+              "highHumidity": { "title": "High humidity", "type": "boolean", "default": true },
+              "filterDirty": { "title": "Filter needs attention", "type": "boolean", "default": true },
+              "deviceOff": { "title": "Unit turned off unexpectedly", "type": "boolean", "default": true },
+              "deviceOffline": { "title": "Device offline", "type": "boolean", "default": true },
+              "apiError": { "title": "API errors", "type": "boolean", "default": true },
+              "humiditySpike": { "title": "Humidity spike (+15% in ~5 min)", "type": "boolean", "default": true },
+              "humidityRising": { "title": "Humidity rising while running", "type": "boolean", "default": true },
+              "notReachingTarget": { "title": "Not reaching target after 1h", "type": "boolean", "default": true, "description": "Skipped automatically in CONTINUOUS mode." },
+              "runningTooLong": { "title": "Running 12h+ continuously", "type": "boolean", "default": true, "description": "Skipped automatically in CONTINUOUS mode." },
+              "frequentCycling": { "title": "Frequent on/off cycling", "type": "boolean", "default": true },
+              "freezeWarning": { "title": "Freeze warning (ambient ≤5°C)", "type": "boolean", "default": true }
+            }
+          }
+        }
       }
     }
-  }
+  },
+  "layout": [
+    "name",
+    "auth",
+    "pollInterval",
+    "dehumidifierMode",
+    {
+      "key": "notifications",
+      "type": "fieldset",
+      "expandable": true,
+      "expanded": false,
+      "title": "Notifications",
+      "items": [
+        "notifications.enabled",
+        {
+          "key": "notifications.url",
+          "condition": { "functionBody": "return model.notifications && model.notifications.enabled;" }
+        },
+        {
+          "key": "notifications.cooldownMinutes",
+          "condition": { "functionBody": "return model.notifications && model.notifications.enabled;" }
+        },
+        {
+          "key": "notifications.humidityThreshold",
+          "condition": { "functionBody": "return model.notifications && model.notifications.enabled;" }
+        },
+        {
+          "type": "fieldset",
+          "expandable": true,
+          "expanded": false,
+          "title": "Alert Types",
+          "condition": { "functionBody": "return model.notifications && model.notifications.enabled;" },
+          "items": [
+            "notifications.alerts.bucketFull",
+            "notifications.alerts.highHumidity",
+            "notifications.alerts.filterDirty",
+            "notifications.alerts.deviceOff",
+            "notifications.alerts.deviceOffline",
+            "notifications.alerts.apiError",
+            "notifications.alerts.humiditySpike",
+            "notifications.alerts.humidityRising",
+            "notifications.alerts.notReachingTarget",
+            "notifications.alerts.runningTooLong",
+            "notifications.alerts.frequentCycling",
+            "notifications.alerts.freezeWarning"
+          ]
+        },
+        {
+          "type": "fieldset",
+          "expandable": true,
+          "expanded": false,
+          "title": "Webhook Customization",
+          "condition": { "functionBody": "return model.notifications && model.notifications.enabled;" },
+          "items": [
+            "notifications.title",
+            "notifications.priority",
+            "notifications.tags"
+          ]
+        }
+      ]
+    }
+  ]
 }

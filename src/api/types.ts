@@ -38,6 +38,32 @@ export interface NetworkInterface {
   swVersion: string;
 }
 
+export type WebhookPriority = 'min' | 'low' | 'default' | 'high' | 'max';
+
+export interface NotificationsConfig {
+  enabled: boolean;
+  url?: string;
+  cooldownMinutes?: number;
+  humidityThreshold?: number;
+  title?: string;
+  priority?: WebhookPriority;
+  tags?: string;
+  alerts?: {
+    bucketFull?: boolean;
+    highHumidity?: boolean;
+    filterDirty?: boolean;
+    deviceOff?: boolean;
+    deviceOffline?: boolean;
+    apiError?: boolean;
+    humiditySpike?: boolean;
+    humidityRising?: boolean;
+    notReachingTarget?: boolean;
+    runningTooLong?: boolean;
+    frequentCycling?: boolean;
+    freezeWarning?: boolean;
+  };
+}
+
 export interface FrigidaireDehumidifierConfig extends PlatformConfig {
   auth: {
     username: string;
@@ -45,4 +71,5 @@ export interface FrigidaireDehumidifierConfig extends PlatformConfig {
   };
   pollInterval?: number;
   dehumidifierMode?: string;
+  notifications?: NotificationsConfig;
 }
