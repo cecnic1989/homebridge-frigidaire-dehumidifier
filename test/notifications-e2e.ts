@@ -161,12 +161,35 @@ async function main(): Promise<void> {
       assert.ok(a.find((x) => x.type === 'high_humidity'), 'high_humidity');
       triggered.push('high_humidity');
     }
-    // filter_dirty
+    // filter_dirty (positive: CLEAN — needs-cleaning state in Frigidaire API)
+    {
+      const { checker } = newChecker();
+      const a = checker.checkAppliance({ reported: baseState({ filterState: 'CLEAN' }), isOnline: true });
+      const alert = a.find((x) => x.type === 'filter_dirty');
+      assert.ok(alert, 'filter_dirty fires on CLEAN');
+      assert.ok(
+        alert!.message.includes('cleaning'),
+        `CLEAN should yield a "needs cleaning" message, got: ${alert!.message}`,
+      );
+      triggered.push('filter_dirty');
+    }
+    // filter_dirty (positive: CHANGE)
     {
       const { checker } = newChecker();
       const a = checker.checkAppliance({ reported: baseState({ filterState: 'CHANGE' }), isOnline: true });
-      assert.ok(a.find((x) => x.type === 'filter_dirty'), 'filter_dirty');
-      triggered.push('filter_dirty');
+      assert.ok(a.find((x) => x.type === 'filter_dirty'), 'filter_dirty fires on CHANGE');
+    }
+    // filter_dirty (positive: BUY)
+    {
+      const { checker } = newChecker();
+      const a = checker.checkAppliance({ reported: baseState({ filterState: 'BUY' }), isOnline: true });
+      assert.ok(a.find((x) => x.type === 'filter_dirty'), 'filter_dirty fires on BUY');
+    }
+    // filter_dirty (negative): GOOD must NOT fire.
+    {
+      const { checker } = newChecker();
+      const a = checker.checkAppliance({ reported: baseState({ filterState: 'GOOD' }), isOnline: true });
+      assert.ok(!a.find((x) => x.type === 'filter_dirty'), 'filter_dirty must NOT fire on GOOD');
     }
     // device_off (transition RUNNING -> OFF)
     {

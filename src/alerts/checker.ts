@@ -112,11 +112,12 @@ export class AlertChecker {
     if (status !== 'CLEAN' && status !== 'CHANGE' && status !== 'BUY') {
       return;
     }
-    this.maybeAlert(
-      alerts,
-      'filter_dirty',
-      `DEHUMIDIFIER: Filter status: ${status}. Needs attention.`,
-    );
+    const messages: Record<string, string> = {
+      CLEAN: 'DEHUMIDIFIER: Filter needs cleaning.',
+      CHANGE: 'DEHUMIDIFIER: Filter needs to be changed.',
+      BUY: 'DEHUMIDIFIER: Filter needs replacement — please order a new one.',
+    };
+    this.maybeAlert(alerts, 'filter_dirty', messages[status]);
   }
 
   private checkUnexpectedOff(alerts: Alert[], prevPower: string, currentPower: string): void {
