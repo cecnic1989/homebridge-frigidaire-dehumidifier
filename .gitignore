@@ -127,10 +127,14 @@ dist
 /hbConfig/config.json
 
 # Cached Electrolux OAuth session (skips re-login to avoid session cap)
-/hbConfig/.session.json
+/hbConfig/*.session.json
 
 # Homebridge runtime state (per-user, contains HomeKit pairing keys)
 /hbConfig/auth.json
 /hbConfig/accessories/
 /hbConfig/persist/
 /hbConfig/*.log
+
+# Homebridge UI (homebridge-config-ui-x) runtime state and secrets
+/hbConfig/.uix-*
+/hbConfig/backups/
