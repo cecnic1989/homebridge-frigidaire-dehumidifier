@@ -38,9 +38,9 @@ export function isBucketFull(state: DehumidifierState): boolean {
 }
 
 export function filterStateToHAP(filterState: string): number {
-  // 0 = FILTER_OK, 1 = CHANGE_FILTER
+  // 0 = FILTER_OK, 1 = CHANGE_FILTER. CLEAN means "needs cleaning" in the Frigidaire API.
   const upper = filterState?.toUpperCase();
-  if (upper === 'CHANGE' || upper === 'BUY') {
+  if (upper === 'CLEAN' || upper === 'CHANGE' || upper === 'BUY') {
     return 1;
   }
   return 0;
