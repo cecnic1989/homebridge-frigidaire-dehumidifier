@@ -4,7 +4,7 @@
   ],
   "ext": "ts",
   "ignore": [],
-  "exec": "tsc && homebridge -U ./hbConfig -D",
+  "exec": "tsc && hb-service run -U ./hbConfig -P node_modules --stdout",
   "signal": "SIGTERM",
   "env": {
     "NODE_OPTIONS": "--trace-warnings"

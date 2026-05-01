@@ -27,20 +27,21 @@
     "homebridge": "^1.8.0 || ^2.0.0-beta.0"
   },
   "scripts": {
+    "watch": "npm run build && npm link && nodemon",
     "build": "rimraf ./dist && tsc",
     "lint": "eslint . --max-warnings=0",
     "test": "tsx --test test/checker.test.ts test/mappers.test.ts",
     "test:e2e:api": "tsx e2e/api.e2e.ts",
     "test:e2e:command": "tsx e2e/command.e2e.ts",
     "test:e2e:notifications": "tsx --env-file=.env e2e/notifications.e2e.ts",
-    "prepublishOnly": "npm run lint && npm run build",
-    "watch": "npm run build && npm link && nodemon"
+    "prepublishOnly": "npm run lint && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.6.0",
     "eslint": "^10.2.0",
     "homebridge": "^2.0.0-beta.55",
+    "homebridge-config-ui-x": "^5.22.0",
     "nodemon": "^3.1.11",
     "rimraf": "^6.1.0",
     "tsx": "^4.21.0",
