@@ -204,10 +204,10 @@ export class DehumidifierAccessory {
 
   private activeValue(): number {
     const { Characteristic } = this.platform;
-    if (this.state.applianceState?.toUpperCase() === 'RUNNING') {
-      return Characteristic.Active.ACTIVE;
+    if (this.state.applianceState?.toUpperCase() === 'OFF') {
+      return Characteristic.Active.INACTIVE;
     }
-    return Characteristic.Active.INACTIVE;
+    return Characteristic.Active.ACTIVE;
   }
 
   private currentStateValue(): number {
