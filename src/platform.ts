@@ -189,12 +189,23 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   }
 
   private async discoverDevices(): Promise<void> {
-    let appliances: Appliance[];
-    try {
-      appliances = await this.client.getAppliances();
-    } catch (err) {
-      this.log.error('Failed to discover devices:', (err as Error).message);
-      return;
+    // Retry on failure — otherwise a single transient error here leaves cached
+    // accessories loaded but with no characteristic handlers wired and no
+    // wrappers in the per-feature Maps, making the plugin a zombie until restart.
+    let attempt = 0;
+    let appliances: Appliance[] | undefined;
+    while (!appliances) {
+      try {
+        appliances = await this.client.getAppliances();
+      } catch (err) {
+        const waitMin = NORMAL_RETRY_MINUTES[Math.min(attempt++, NORMAL_RETRY_MINUTES.length - 1)];
+        this.log.error(
+          'Failed to discover devices: %s. Retrying in %dm.',
+          (err as Error).message,
+          waitMin,
+        );
+        await sleep(waitMin * 60 * 1000);
+      }
     }
 
     for (const appliance of appliances) {
