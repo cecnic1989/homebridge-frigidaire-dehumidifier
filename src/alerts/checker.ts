@@ -71,6 +71,9 @@ export class AlertChecker {
 
   checkAPIError(message: string): Alert[] {
     const alerts: Alert[] = [];
+    if (!this.enabled('apiError')) {
+      return alerts;
+    }
     this.maybeAlert(alerts, 'api_error', message);
     this.persist();
     return alerts;
