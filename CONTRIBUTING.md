@@ -13,21 +13,29 @@ cd homebridge-frigidaire-dehumidifier
 npm install
 ```
 
-Create your local dev config (used by both the smoke test and local Homebridge):
+Create your local dev config (used by both the smoke tests and local Homebridge):
 
 ```bash
-cp test/hbConfig/config.json.example test/hbConfig/config.json
+cp hbConfig/config.json.example hbConfig/config.json
 ```
 
-Edit `test/hbConfig/config.json` — replace `YOUR_EMAIL_HERE` / `YOUR_PASSWORD_HERE`. This file is gitignored; only `.example` is tracked.
+Edit `hbConfig/config.json` — replace `YOUR_EMAIL_HERE` / `YOUR_PASSWORD_HERE`. This file is gitignored; only `.example` is tracked.
+
+## Unit tests
+
+```bash
+npm test
+```
+
+Runs the `node:test` suites under `test/` (alert checker, mappers). No network or credentials required. CI runs this on every push and PR.
 
 ## API Smoke Test
 
 Verifies auth + device discovery without Homebridge. Fast feedback loop.
 
 ```bash
-npx tsx test/api-test.ts         # prints parsed state per device
-npx tsx test/api-test.ts --raw   # also dumps raw API JSON (useful for new fields)
+npm run test:e2e:api          # prints parsed state per device
+npm run test:e2e:api -- --raw # also dumps raw API JSON (useful for new fields)
 ```
 
 ## Command Test
@@ -35,18 +43,26 @@ npx tsx test/api-test.ts --raw   # also dumps raw API JSON (useful for new field
 Sends a write command to the first appliance and prints before/after state. Use when probing OCP payload shapes or verifying a setter works against a real device without going through HomeKit.
 
 ```bash
-npx tsx test/command-test.ts power on|off
-npx tsx test/command-test.ts mode AUTO|DRY|CONTINUOUS|QUIET
-npx tsx test/command-test.ts fan LOW|MIDDLE|HIGH|AUTO
-npx tsx test/command-test.ts lock on|off
-npx tsx test/command-test.ts humidity 45
-npx tsx test/command-test.ts raw '{"executeCommand":"OFF"}'        # arbitrary payload
-npx tsx test/command-test.ts --id <applianceId> power off          # multi-device accounts
+npm run test:e2e:command -- power on|off
+npm run test:e2e:command -- mode AUTO|DRY|CONTINUOUS|QUIET
+npm run test:e2e:command -- fan LOW|MIDDLE|HIGH|AUTO
+npm run test:e2e:command -- lock on|off
+npm run test:e2e:command -- humidity 45
+npm run test:e2e:command -- raw '{"executeCommand":"OFF"}'        # arbitrary payload
+npm run test:e2e:command -- --id <applianceId> power off          # multi-device accounts
+```
+
+## Notification Smoke Test
+
+Drives the `bucket_full` alert through `AlertChecker → WebhookNotifier` and posts to ntfy. Set `NTFY_TOPIC` in a local `.env` file (gitignored), then:
+
+```bash
+npm run test:e2e:notifications
 ```
 
 ## Session caching
 
-Both scripts cache the Electrolux session to `test/hbConfig/.session.json` (gitignored). Without it, each script run does a fresh login and Electrolux caps active sessions (`cas_3403 Too many active login context` → 429). With it, repeated runs reuse tokens and hit the refresh path on expiry.
+The API and command scripts cache the Electrolux session to `hbConfig/.session.json` (gitignored). Without it, each script run does a fresh login and Electrolux caps active sessions (`cas_3403 Too many active login context` → 429). With it, repeated runs reuse tokens and hit the refresh path on expiry.
 
 Delete `.session.json` to force a full re-login.
 

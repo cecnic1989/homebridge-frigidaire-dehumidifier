@@ -21,7 +21,7 @@ export const logger = {
 
 function sessionPath(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, 'hbConfig', '.session.json');
+  return join(here, '..', 'hbConfig', '.session.json');
 }
 
 export function buildClient(username: string, password: string): ElectroluxClient {
@@ -45,7 +45,7 @@ export function buildClient(username: string, password: string): ElectroluxClien
 
 export function loadCreds(): { username: string; password: string } {
   const here = dirname(fileURLToPath(import.meta.url));
-  const configPath = join(here, 'hbConfig', 'config.json');
+  const configPath = join(here, '..', 'hbConfig', 'config.json');
 
   let raw: string;
   try {

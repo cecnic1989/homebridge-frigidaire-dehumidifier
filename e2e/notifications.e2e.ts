@@ -1,15 +1,16 @@
 // Real-push smoke test: drives the bucket_full alert through AlertChecker → WebhookNotifier
-// and posts to ntfy. Run manually with `npm run test:e2e` after setting NTFY_TOPIC in .env.
-// Pure assertion logic for AlertChecker / mappers lives in test/*.test.ts (run via `npm test`).
+// and posts to ntfy. Run manually with `npm run test:e2e:notifications` after setting
+// NTFY_TOPIC in .env. Pure assertion logic for AlertChecker / mappers lives in
+// test/*.test.ts (run via `npm test`).
 
 import assert from 'node:assert/strict';
 
 import { WebhookNotifier } from '../src/alerts/webhookNotifier.js';
-import { baseState, newChecker } from './helpers.js';
+import { baseState, newChecker } from '../test/helpers.js';
 
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
 if (!NTFY_TOPIC) {
-  console.error('NTFY_TOPIC env var is required. Run with: npm run test:e2e (with NTFY_TOPIC in .env)');
+  console.error('NTFY_TOPIC env var is required. Run with: npm run test:e2e:notifications (with NTFY_TOPIC in .env)');
   process.exit(1);
 }
 const NTFY_URL = process.env.NTFY_URL ?? `https://ntfy.sh/${NTFY_TOPIC}`;

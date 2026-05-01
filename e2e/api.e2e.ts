@@ -1,13 +1,22 @@
 /**
- * API smoke test. Reads credentials from test/hbConfig/config.json
- * (same config the dev Homebridge uses).
+ * API smoke test. Reads credentials from hbConfig/config.json
+ * (same config the dev Homebridge instance uses).
  *
- *   cp test/hbConfig/config.json.example test/hbConfig/config.json
+ *   cp hbConfig/config.json.example hbConfig/config.json
  *   # edit config.json with real creds
- *   npx tsx test/api-test.ts [--raw]
+ *   npm run test:e2e:api -- [--raw]
  */
 
 import { buildClient, loadCreds } from './shared.js';
+
+// CLEAN means "needs cleaning" in the Frigidaire API — append the meaning
+// alongside the raw value so the smoke output isn't misleading.
+const FILTER_MEANINGS: Record<string, string> = {
+  GOOD: 'OK',
+  CLEAN: 'needs cleaning',
+  CHANGE: 'needs replacement',
+  BUY: 'order new filter',
+};
 
 async function main() {
   const { username, password } = loadCreds();
@@ -31,7 +40,8 @@ async function main() {
     console.log(`  Humidity:    ${r.sensorHumidity}% (target: ${r.targetHumidity}%)`);
     console.log(`  Mode:        ${r.mode}`);
     console.log(`  Fan:         ${r.fanSpeedSetting}`);
-    console.log(`  Filter:      ${r.filterState}`);
+    const filterMeaning = FILTER_MEANINGS[r.filterState?.toUpperCase() ?? ''] ?? 'unknown';
+    console.log(`  Filter:      ${r.filterState} (${filterMeaning})`);
     console.log(`  Water:       bucket=${r.waterBucketLevel} tankFull=${r.waterTankFull}`);
     console.log(`  Pump:        ${r.condensatePump}`);
     console.log(`  Clean Air:   ${r.cleanAirMode}`);

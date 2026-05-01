@@ -124,13 +124,13 @@ dist
 .idea
 
 # Homebridge dev config (copy from config.json.example, fill in creds locally)
-/test/hbConfig/config.json
+/hbConfig/config.json
 
 # Cached Electrolux OAuth session (skips re-login to avoid session cap)
-/test/hbConfig/.session.json
+/hbConfig/.session.json
 
 # Homebridge runtime state (per-user, contains HomeKit pairing keys)
-/test/hbConfig/auth.json
-/test/hbConfig/accessories/
-/test/hbConfig/persist/
-/test/hbConfig/*.log
+/hbConfig/auth.json
+/hbConfig/accessories/
+/hbConfig/persist/
+/hbConfig/*.log

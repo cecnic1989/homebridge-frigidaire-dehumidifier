@@ -1,14 +1,14 @@
 /**
  * Write-side smoke test. Sends a command to the first appliance and verifies
- * state delta after a short delay. Reads creds from test/hbConfig/config.json.
+ * state delta after a short delay. Reads creds from hbConfig/config.json.
  *
- *   npx tsx test/command-test.ts power on|off
- *   npx tsx test/command-test.ts mode AUTO|DRY|CONTINUOUS|QUIET
- *   npx tsx test/command-test.ts fan LOW|MIDDLE|HIGH|AUTO
- *   npx tsx test/command-test.ts lock on|off
- *   npx tsx test/command-test.ts humidity 45
- *   npx tsx test/command-test.ts raw '{"executeCommand":"OFF"}'
- *   npx tsx test/command-test.ts --id <applianceId> power off
+ *   npm run test:e2e:command -- power on|off
+ *   npm run test:e2e:command -- mode AUTO|DRY|CONTINUOUS|QUIET
+ *   npm run test:e2e:command -- fan LOW|MIDDLE|HIGH|AUTO
+ *   npm run test:e2e:command -- lock on|off
+ *   npm run test:e2e:command -- humidity 45
+ *   npm run test:e2e:command -- raw '{"executeCommand":"OFF"}'
+ *   npm run test:e2e:command -- --id <applianceId> power off
  */
 
 import type { Appliance, DehumidifierState } from '../src/api/types.js';
