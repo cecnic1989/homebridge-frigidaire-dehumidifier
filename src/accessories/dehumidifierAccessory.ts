@@ -2,7 +2,17 @@ import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge
 
 import type { FrigidaireDehumidifierPlatform } from '../platform.js';
 import type { Appliance, DehumidifierState } from '../api/types.js';
-import { fanSpeedToHAP, filterStateToHAP, hapToFanSpeed, parseUILockMode, waterLevelToHAP } from '../utils/mappers.js';
+import {
+  currentStateKind,
+  fanSpeedToHAP,
+  filterStateToHAP,
+  hapToFanSpeed,
+  modeToCommand,
+  normalizeMode,
+  parseUILockMode,
+  waterLevelToHAP,
+} from '../utils/mappers.js';
+import type { ModeSwitchGroup } from './modeSwitchGroup.js';
 
 export class DehumidifierAccessory {
   private dehumidifierService: Service;
@@ -12,6 +22,7 @@ export class DehumidifierAccessory {
   constructor(
     private readonly platform: FrigidaireDehumidifierPlatform,
     private readonly accessory: PlatformAccessory,
+    private readonly modeGroup?: ModeSwitchGroup,
   ) {
     const device = accessory.context.device as Appliance;
     this.state = device.properties.reported;
@@ -107,6 +118,8 @@ export class DehumidifierAccessory {
     this.dehumidifierService.updateCharacteristic(Characteristic.LockPhysicalControls, this.lockValue());
 
     this.filterService.updateCharacteristic(Characteristic.FilterChangeIndication, filterStateToHAP(state.filterState));
+
+    this.modeGroup?.refresh(state);
   }
 
   // --- Getters ---
@@ -145,12 +158,15 @@ export class DehumidifierAccessory {
   private async setTargetState(value: CharacteristicValue): Promise<void> {
     const applianceId = (this.accessory.context.device as Appliance).applianceId;
     const { Characteristic } = this.platform;
-    const mode = value === Characteristic.TargetHumidifierDehumidifierState.HUMIDIFIER_OR_DEHUMIDIFIER
-      ? 'AUTO'
-      : (this.platform.pluginConfig.dehumidifierMode?.toUpperCase() ?? 'DRY');
-    this.platform.log.info('Setting mode to %s', mode);
+    const goingToAuto = value === Characteristic.TargetHumidifierDehumidifierState.HUMIDIFIER_OR_DEHUMIDIFIER;
+    const targetMode = goingToAuto ? 'AUTO' : (this.modeGroup?.lastNonAutoMode() ?? 'DRY');
+    const wasOff = this.state.applianceState?.toUpperCase() === 'OFF';
+    this.platform.log.info('Setting mode to %s', targetMode);
     try {
-      await this.platform.client.sendCommand(applianceId, { mode });
+      await this.platform.client.sendCommand(applianceId, { mode: modeToCommand(targetMode) });
+      if (wasOff) {
+        await this.platform.client.sendCommand(applianceId, { executeCommand: 'ON' });
+      }
       this.dehumidifierService.updateCharacteristic(Characteristic.TargetHumidifierDehumidifierState, value);
     } catch (err) {
       this.platform.log.error('Failed to set mode:', (err as Error).message);
@@ -212,12 +228,12 @@ export class DehumidifierAccessory {
 
   private currentStateValue(): number {
     const { Characteristic } = this.platform;
-    const upper = this.state.applianceState?.toUpperCase();
-    if (upper === 'RUNNING') {
-      return Characteristic.CurrentHumidifierDehumidifierState.DEHUMIDIFYING;
-    }
-    if (upper === 'OFF') {
+    const kind = currentStateKind(this.state.applianceState, normalizeMode(this.state.mode));
+    if (kind === 'INACTIVE') {
       return Characteristic.CurrentHumidifierDehumidifierState.INACTIVE;
+    }
+    if (kind === 'DEHUMIDIFYING') {
+      return Characteristic.CurrentHumidifierDehumidifierState.DEHUMIDIFYING;
     }
     return Characteristic.CurrentHumidifierDehumidifierState.IDLE;
   }

@@ -41,16 +41,11 @@
         "maximum": 3600,
         "description": "How often to poll device status"
       },
-      "dehumidifierMode": {
-        "title": "Default Dehumidifier Mode",
-        "type": "string",
-        "default": "DRY",
-        "oneOf": [
-          { "title": "Dry", "enum": ["DRY"] },
-          { "title": "Continuous", "enum": ["CONTINUOUS"] },
-          { "title": "Quiet", "enum": ["QUIET"] }
-        ],
-        "description": "Mode when HomeKit target is set to DEHUMIDIFIER (non-AUTO)"
+      "showModeSwitches": {
+        "title": "Show Mode Switches",
+        "type": "boolean",
+        "default": true,
+        "description": "Expose the dehumidifier's modes (Auto, Dry, Quiet, Fan, Continuous) as separate Switch tiles in HomeKit. Disable to keep only the main dehumidifier tile."
       },
       "notifications": {
         "title": "Notifications",
@@ -120,8 +115,8 @@
               "apiError": { "title": "API errors", "type": "boolean", "default": true },
               "humiditySpike": { "title": "Humidity spike (+15% in ~5 min)", "type": "boolean", "default": true },
               "humidityRising": { "title": "Humidity rising while running", "type": "boolean", "default": true },
-              "notReachingTarget": { "title": "Not reaching target after 1h", "type": "boolean", "default": true, "description": "Skipped automatically in CONTINUOUS mode." },
-              "runningTooLong": { "title": "Running 12h+ continuously", "type": "boolean", "default": true, "description": "Skipped automatically in CONTINUOUS mode." },
+              "notReachingTarget": { "title": "Not reaching target after 1h", "type": "boolean", "default": true, "description": "Skipped automatically in Continuous and Fan modes." },
+              "runningTooLong": { "title": "Running 12h+ continuously", "type": "boolean", "default": true, "description": "Skipped automatically in Continuous and Fan modes." },
               "frequentCycling": { "title": "Frequent on/off cycling", "type": "boolean", "default": true },
               "freezeWarning": { "title": "Freeze warning (ambient ≤5°C)", "type": "boolean", "default": true }
             }
@@ -134,7 +129,7 @@
     "name",
     "auth",
     "pollInterval",
-    "dehumidifierMode",
+    "showModeSwitches",
     {
       "key": "notifications",
       "type": "fieldset",

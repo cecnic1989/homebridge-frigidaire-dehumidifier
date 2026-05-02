@@ -70,6 +70,6 @@ export interface FrigidaireDehumidifierConfig extends PlatformConfig {
     password: string;
   };
   pollInterval?: number;
-  dehumidifierMode?: string;
+  showModeSwitches?: boolean;
   notifications?: NotificationsConfig;
 }

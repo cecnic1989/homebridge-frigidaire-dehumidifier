@@ -7,6 +7,7 @@ import { ElectroluxClient } from './api/electroluxClient.js';
 import type { SessionSnapshot } from './api/electroluxClient.js';
 import type { Appliance, FrigidaireDehumidifierConfig } from './api/types.js';
 import { DehumidifierAccessory } from './accessories/dehumidifierAccessory.js';
+import { ModeSwitchGroup } from './accessories/modeSwitchGroup.js';
 import { HumiditySensorAccessory } from './accessories/humiditySensorAccessory.js';
 import { TemperatureSensorAccessory } from './accessories/temperatureSensorAccessory.js';
 import { BucketFullAccessory } from './accessories/bucketFullAccessory.js';
@@ -259,7 +260,12 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       this.api.hap.Categories.AIR_DEHUMIDIFIER,
       appliance,
     );
-    this.dehumidifierAccessories.set(appliance.applianceId, new DehumidifierAccessory(this, accessory));
+    const showSwitches = this.pluginConfig.showModeSwitches !== false;
+    if (!showSwitches) {
+      ModeSwitchGroup.cleanup(accessory);
+    }
+    const group = showSwitches ? new ModeSwitchGroup(this, accessory) : undefined;
+    this.dehumidifierAccessories.set(appliance.applianceId, new DehumidifierAccessory(this, accessory, group));
   }
 
   private setupHumiditySensorAccessory(appliance: Appliance): void {
