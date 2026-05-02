@@ -9,7 +9,8 @@ Homebridge plugin for Frigidaire / Electrolux smart dehumidifiers. Exposes your 
 
 Each physical dehumidifier is split into multiple Home app tiles so each sensor and control can be individually named, moved between rooms, and used in HomeKit automations:
 
-- **Dehumidifier** — power, mode (Auto / Dry / Continuous / Quiet), target humidity, fan speed, child lock, filter indicator
+- **Dehumidifier** — power, target humidity, fan speed, child lock, filter indicator. The main tile's Auto/Dehumidify toggle mirrors the active mode.
+- **Mode switches** — five Switch tiles (Auto, Dry, Quiet, Fan, Continuous) for explicit mode selection. Tapping one selects that mode and turns the unit on if it was off; tapping the active switch off powers the unit down. Disable via `showModeSwitches: false` in config.
 - **Humidity sensor** — room humidity
 - **Temperature sensor** — ambient temperature (when reported by device)
 - **Water bucket** — `LeakSensor` triggers when water tank fills (works on both Husky and DH models)
@@ -56,7 +57,7 @@ All other fields optional — see table for defaults.
 | `auth.username` | required | Frigidaire account email |
 | `auth.password` | required | Frigidaire account password |
 | `pollInterval` | `90` | Poll interval in seconds (min 15, max 3600) |
-| `dehumidifierMode` | `"DRY"` | Mode when HomeKit target set to dehumidifier — `DRY` / `CONTINUOUS` / `QUIET` |
+| `showModeSwitches` | `true` | Whether to expose mode-selection Switch tiles in HomeKit |
 
 ## Status
 
