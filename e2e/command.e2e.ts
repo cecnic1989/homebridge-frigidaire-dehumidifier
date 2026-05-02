@@ -3,7 +3,7 @@
  * state delta after a short delay. Reads creds from hbConfig/config.json.
  *
  *   npm run test:e2e:command -- power on|off
- *   npm run test:e2e:command -- mode AUTO|DRY|CONTINUOUS|QUIET
+ *   npm run test:e2e:command -- mode AUTO|DRY|CONTINUOUS|QUIET|FANONLY
  *   npm run test:e2e:command -- fan LOW|MIDDLE|HIGH|AUTO
  *   npm run test:e2e:command -- lock on|off
  *   npm run test:e2e:command -- humidity 45
@@ -37,7 +37,7 @@ function buildPayload(argv: string[]): Payload {
   case 'power':
     return { executeCommand: req(arg, 'power on|off').toUpperCase() };
   case 'mode':
-    return { mode: req(arg, 'mode AUTO|DRY|CONTINUOUS|QUIET').toUpperCase() };
+    return { mode: req(arg, 'mode AUTO|DRY|CONTINUOUS|QUIET|FANONLY').toUpperCase() };
   case 'fan':
     return { fanSpeedSetting: req(arg, 'fan LOW|MIDDLE|HIGH|AUTO').toUpperCase() };
   case 'lock':
