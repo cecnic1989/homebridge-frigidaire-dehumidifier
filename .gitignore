@@ -138,3 +138,6 @@ dist
 # Homebridge UI (homebridge-config-ui-x) runtime state and secrets
 /hbConfig/.uix-*
 /hbConfig/backups/
+
+# Local-only superpowers specs and plans (working notes, not committed)
+/docs/superpowers/
