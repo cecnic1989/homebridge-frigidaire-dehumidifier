@@ -1,6 +1,7 @@
 import type { Logging } from 'homebridge';
 
 import type { DehumidifierState } from '../api/types.js';
+import { isDehumidifying, normalizeMode, type DehumMode } from '../utils/mappers.js';
 import type {
   Alert,
   AlertCheckerConfig,
@@ -39,7 +40,7 @@ export class AlertChecker {
     const currentPower = (reported.applianceState ?? '').toUpperCase();
     const isRunning = currentPower === 'RUNNING';
     const prevPower = this.state.previousPowerState ?? '';
-    const mode = (reported.mode ?? '').toUpperCase();
+    const mode = normalizeMode(reported.mode);
     const now = Date.now();
 
     const alerts: Alert[] = [];
@@ -53,7 +54,7 @@ export class AlertChecker {
     this.recordHumidity(reported.sensorHumidity, isRunning, now);
 
     this.checkHumiditySpike(alerts, reported.sensorHumidity, now);
-    this.checkHumidityRising(alerts, reported.sensorHumidity, isRunning, now);
+    this.checkHumidityRising(alerts, reported.sensorHumidity, isRunning, mode, now);
     this.checkNotReachingTarget(alerts, reported, isRunning, mode, now);
 
     this.trackRunDuration(isRunning, now);
@@ -62,7 +63,7 @@ export class AlertChecker {
     this.trackPowerTransition(prevPower, currentPower, now);
     this.checkFrequentCycling(alerts, now);
 
-    this.checkFreezeWarning(alerts, isRunning, reported);
+    this.checkFreezeWarning(alerts, isRunning, mode, reported);
 
     this.state.previousPowerState = currentPower;
     this.persist();
@@ -183,9 +184,13 @@ export class AlertChecker {
     alerts: Alert[],
     currentHumidity: number,
     isRunning: boolean,
+    mode: DehumMode | undefined,
     now: number,
   ): void {
     if (!this.enabled('humidityRising') || !isRunning) {
+      return;
+    }
+    if (!isDehumidifying(mode)) {
       return;
     }
     const cutoff = now - RISING_WINDOW_MS;
@@ -216,13 +221,13 @@ export class AlertChecker {
     alerts: Alert[],
     s: DehumidifierState,
     isRunning: boolean,
-    mode: string,
+    mode: DehumMode | undefined,
     now: number,
   ): void {
     if (!this.enabled('notReachingTarget') || !isRunning) {
       return;
     }
-    if (mode === 'CONTINUOUS') {
+    if (mode === 'CONTINUOUS' || mode === 'FANONLY') {
       return;
     }
     if (s.sensorHumidity <= s.targetHumidity) {
@@ -238,11 +243,16 @@ export class AlertChecker {
     );
   }
 
-  private checkRunningTooLong(alerts: Alert[], isRunning: boolean, mode: string, now: number): void {
+  private checkRunningTooLong(
+    alerts: Alert[],
+    isRunning: boolean,
+    mode: DehumMode | undefined,
+    now: number,
+  ): void {
     if (!this.enabled('runningTooLong') || !isRunning) {
       return;
     }
-    if (mode === 'CONTINUOUS') {
+    if (mode === 'CONTINUOUS' || mode === 'FANONLY') {
       return;
     }
     if (this.state.runningSince === undefined) {
@@ -276,8 +286,16 @@ export class AlertChecker {
     );
   }
 
-  private checkFreezeWarning(alerts: Alert[], isRunning: boolean, s: DehumidifierState): void {
+  private checkFreezeWarning(
+    alerts: Alert[],
+    isRunning: boolean,
+    mode: DehumMode | undefined,
+    s: DehumidifierState,
+  ): void {
     if (!this.enabled('freezeWarning') || !isRunning) {
+      return;
+    }
+    if (!isDehumidifying(mode)) {
       return;
     }
     if (s.ambientTemperatureC === undefined || s.ambientTemperatureC === null) {

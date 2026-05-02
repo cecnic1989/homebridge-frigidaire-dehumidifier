@@ -173,6 +173,70 @@ describe('AlertChecker — CONTINUOUS mode skips long-run alerts', () => {
   });
 });
 
+describe('AlertChecker — FANONLY mode skips dehumidify-dependent alerts', () => {
+  test('not_reaching_target is suppressed in FANONLY mode', () => {
+    const now = Date.now();
+    const { checker } = newChecker({
+      state: { ...emptyAlertState(), runningSince: now - 65 * 60 * 1000 },
+    });
+    const a = checker.checkAppliance({
+      reported: baseState({ mode: 'fanOnly', sensorHumidity: 70, targetHumidity: 45 }),
+      isOnline: true,
+    });
+    assert.equal(a.find((x) => x.type === 'not_reaching_target'), undefined);
+  });
+
+  test('running_too_long is suppressed in FANONLY mode', () => {
+    const now = Date.now();
+    const { checker } = newChecker({
+      state: { ...emptyAlertState(), runningSince: now - 13 * 60 * 60 * 1000 },
+    });
+    const a = checker.checkAppliance({
+      reported: baseState({ mode: 'fanOnly' }),
+      isOnline: true,
+    });
+    assert.equal(a.find((x) => x.type === 'running_too_long'), undefined);
+  });
+
+  test('humidity_rising is suppressed in FANONLY mode', () => {
+    const now = Date.now();
+    const { checker } = newChecker({
+      state: {
+        ...emptyAlertState(),
+        humidityHistory: [
+          { humidity: 50, running: true, time: now - 35 * 60 * 1000 },
+          { humidity: 51, running: true, time: now - 25 * 60 * 1000 },
+          { humidity: 52, running: true, time: now - 15 * 60 * 1000 },
+        ],
+        runningSince: now - 60 * 60 * 1000,
+      },
+    });
+    const a = checker.checkAppliance({
+      reported: baseState({ mode: 'fanOnly', sensorHumidity: 60 }),
+      isOnline: true,
+    });
+    assert.equal(a.find((x) => x.type === 'humidity_rising'), undefined);
+  });
+
+  test('freeze_warning is suppressed in FANONLY mode', () => {
+    const { checker } = newChecker();
+    const a = checker.checkAppliance({
+      reported: baseState({ mode: 'fanOnly', ambientTemperatureC: 2 }),
+      isOnline: true,
+    });
+    assert.equal(a.find((x) => x.type === 'freeze_warning'), undefined);
+  });
+
+  test('high_humidity STILL fires in FANONLY mode (mode-agnostic environmental risk)', () => {
+    const { checker } = newChecker();
+    const a = checker.checkAppliance({
+      reported: baseState({ mode: 'fanOnly', sensorHumidity: 75 }),
+      isOnline: true,
+    });
+    assert.ok(a.find((x) => x.type === 'high_humidity'));
+  });
+});
+
 describe('AlertChecker — cooldown', () => {
   test('same alert within cooldown is suppressed', () => {
     const { checker, state } = newChecker();
