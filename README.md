@@ -25,11 +25,7 @@ Each physical dehumidifier is split into multiple Home app tiles so each sensor 
 
 ## Installation
 
-```bash
-sudo npm install -g @cecnic1989/homebridge-frigidaire-dehumidifier
-```
-
-Or in the Homebridge UI: **Plugins** → search `@cecnic1989/homebridge-frigidaire-dehumidifier`.
+Homebridge UI: **Plugins** → search `@cecnic1989/homebridge-frigidaire-dehumidifier`.
 
 ## Configuration
 
