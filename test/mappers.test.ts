@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import {
+  currentStateKind,
   fanSpeedToHAP,
   filterStateToHAP,
   hapToFanSpeed,
   isBucketFull,
   parseUILockMode,
+  planSwitchTap,
   waterLevelToHAP,
 } from '../src/utils/mappers.js';
 import { baseState } from './helpers.js';
@@ -105,5 +107,46 @@ describe('parseUILockMode', () => {
     assert.equal(parseUILockMode({ value: 'ON' }), true);
     assert.equal(parseUILockMode({ value: true }), true);
     assert.equal(parseUILockMode({ value: 'OFF' }), false);
+  });
+});
+
+describe('currentStateKind', () => {
+  // applianceState=running + fanOnly is the regression case: the unit reports
+  // "running" but is not dehumidifying, so HomeKit's Current State must read
+  // IDLE rather than DEHUMIDIFYING.
+  test('running + FANONLY -> IDLE (unit running but not dehumidifying)', () => {
+    assert.equal(currentStateKind('RUNNING', 'FANONLY'), 'IDLE');
+  });
+
+  test('running + dehumidifying mode -> DEHUMIDIFYING', () => {
+    assert.equal(currentStateKind('RUNNING', 'DRY'), 'DEHUMIDIFYING');
+    assert.equal(currentStateKind('RUNNING', 'AUTO'), 'DEHUMIDIFYING');
+  });
+
+  test('off -> INACTIVE regardless of mode', () => {
+    assert.equal(currentStateKind('OFF', 'DRY'), 'INACTIVE');
+    assert.equal(currentStateKind('OFF', 'FANONLY'), 'INACTIVE');
+  });
+});
+
+describe('planSwitchTap (radio-button + power decisions)', () => {
+  test('tap-on a different mode while powered on -> setMode without power-on', () => {
+    const e = planSwitchTap('DRY', true, { kind: 'setOn', mode: 'AUTO' });
+    assert.deepEqual(e, { kind: 'setMode', mode: 'AUTO', alsoPowerOn: false });
+  });
+
+  test('tap-on any mode while powered off -> setMode + power on', () => {
+    const e = planSwitchTap(undefined, false, { kind: 'setOn', mode: 'QUIET' });
+    assert.deepEqual(e, { kind: 'setMode', mode: 'QUIET', alsoPowerOn: true });
+  });
+
+  test('tap-off the active mode -> powerOff', () => {
+    const e = planSwitchTap('DRY', true, { kind: 'setOff', mode: 'DRY' });
+    assert.deepEqual(e, { kind: 'powerOff' });
+  });
+
+  test('tap-off an inactive mode is a noop (caller re-asserts state)', () => {
+    const e = planSwitchTap('DRY', true, { kind: 'setOff', mode: 'AUTO' });
+    assert.deepEqual(e, { kind: 'noop' });
   });
 });
