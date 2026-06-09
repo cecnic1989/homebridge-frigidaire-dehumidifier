@@ -4,6 +4,10 @@ import { BASE_API_URL, FRIGIDAIRE_API_KEY, FRIGIDAIRE_CLIENT_ID, FRIGIDAIRE_CLIE
 import type { Appliance } from './types.js';
 
 const MAX_ATTEMPTS = 3;
+const COMMAND_MAX_ATTEMPTS = 3;
+const COMMAND_MIN_INTERVAL_MS = 1250;
+const COMMAND_JITTER_MS = 250;
+const COMMAND_MAX_RETRY_AFTER_MS = 30_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -22,6 +26,9 @@ export interface SessionSnapshot {
 export interface ElectroluxClientOptions {
   loadSession?: () => SessionSnapshot | undefined;
   onSessionUpdate?: (snapshot: SessionSnapshot) => void;
+  fetch?: typeof fetch;
+  commandMinIntervalMs?: number;
+  commandJitterMs?: number;
 }
 
 export class ElectroluxClient {
@@ -34,6 +41,8 @@ export class ElectroluxClient {
   private dataCenter = '';
   private regionalBaseURL = '';
   private authPromise: Promise<void> | null = null;
+  private requestChain: Promise<void> = Promise.resolve();
+  private lastCommandAt = 0;
 
   constructor(
     private readonly email: string,
@@ -118,6 +127,14 @@ export class ElectroluxClient {
     this.tokenExpiresAt = 0;
   }
 
+  // Serializes appliance API calls so only one request is in flight at a time.
+  // The promise chain is the queue: each caller chains onto the current tail (FIFO).
+  private withRequestLock<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.requestChain.then(fn);
+    this.requestChain = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
   async getAppliances(): Promise<Appliance[]> {
     let lastErr: Error | null = null;
 
@@ -127,9 +144,9 @@ export class ElectroluxClient {
       const url = `${this.regionalBaseURL}/appliance/api/v2/appliances?includeMetadata=true`;
       let resp: Response;
       try {
-        resp = await fetch(url, {
+        resp = await this.withRequestLock(() => (this.options.fetch ?? fetch)(url, {
           headers: this.authHeaders(),
-        });
+        }));
       } catch (err) {
         lastErr = err as Error;
         const backoff = (1 << attempt) * 1000;
@@ -173,11 +190,32 @@ export class ElectroluxClient {
   }
 
   async sendCommand(applianceId: string, command: Record<string, unknown>): Promise<void> {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    return this.withRequestLock(() => this.doSendCommand(applianceId, command));
+  }
+
+  // Electrolux locks accounts that send commands too quickly (cas_3403, lockouts of
+  // 1h20m-12h), so each command waits for 1.25s ±0.25s jitter since the previous one.
+  private async waitForCommandSlot(): Promise<void> {
+    const minInterval = this.options.commandMinIntervalMs ?? COMMAND_MIN_INTERVAL_MS;
+    const jitterMs = this.options.commandJitterMs ?? COMMAND_JITTER_MS;
+    const jitter = (Math.random() * 2 - 1) * jitterMs;
+    const wait = Math.max(0, this.lastCommandAt + minInterval + jitter - Date.now());
+    if (wait > 0) {
+      await sleep(wait);
+    }
+  }
+
+  private async doSendCommand(applianceId: string, command: Record<string, unknown>): Promise<void> {
+    let reauthed = false;
+    let lastErr: Error | null = null;
+
+    for (let attempt = 0; attempt < COMMAND_MAX_ATTEMPTS; attempt++) {
       await this.ensureAuth();
+      await this.waitForCommandSlot();
+      this.lastCommandAt = Date.now();
 
       const url = `${this.regionalBaseURL}/appliance/api/v2/appliances/${applianceId}/command`;
-      const resp = await fetch(url, {
+      const resp = await (this.options.fetch ?? fetch)(url, {
         method: 'PUT',
         headers: this.authHeaders(),
         body: JSON.stringify(command),
@@ -187,15 +225,35 @@ export class ElectroluxClient {
         return;
       }
 
-      if (resp.status === 401 && attempt === 0) {
+      const body = await resp.text();
+      lastErr = new Error(`sendCommand HTTP ${resp.status}: ${body}`);
+
+      if (resp.status === 401 && !reauthed) {
+        reauthed = true;
         this.log.warn('sendCommand got 401, re-authenticating...');
         this.invalidateTokens();
         continue;
       }
 
-      const body = await resp.text();
-      throw new Error(`sendCommand HTTP ${resp.status}: ${body}`);
+      if (resp.status === 429) {
+        // Never re-auth here: upstream documents that re-auth extends the lockout.
+        const ra = resp.headers.get('Retry-After');
+        const parsed = ra ? parseInt(ra, 10) * 1000 : 5000;
+        const wait = Number.isFinite(parsed) ? parsed : 5000;
+        if (wait > COMMAND_MAX_RETRY_AFTER_MS) {
+          // Lockout-scale Retry-After: fail fast instead of blocking queued commands.
+          this.log.warn('sendCommand rate limited with Retry-After %ds, giving up.', wait / 1000);
+          throw lastErr;
+        }
+        this.log.warn('sendCommand rate limited (attempt %d/%d), waiting %ds...', attempt + 1, COMMAND_MAX_ATTEMPTS, wait / 1000);
+        await sleep(wait);
+        continue;
+      }
+
+      throw lastErr;
     }
+
+    throw new Error(`sendCommand failed after ${COMMAND_MAX_ATTEMPTS} attempts: ${lastErr?.message}`);
   }
 
   // --- Internal auth methods ---
