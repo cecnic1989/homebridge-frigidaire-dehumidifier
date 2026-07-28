@@ -126,8 +126,16 @@
     }
   },
   "layout": [
-    "name",
-    "auth",
+    {
+      "type": "fieldset",
+      "title": "Frigidaire Account",
+      "expandable": false,
+      "expanded": true,
+      "items": [
+        "auth.username",
+        "auth.password"
+      ]
+    },
     "pollInterval",
     "showModeSwitches",
     {
