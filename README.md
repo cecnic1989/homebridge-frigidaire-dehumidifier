@@ -18,7 +18,7 @@ Each physical dehumidifier is split into multiple Home app tiles so each sensor 
 - **Mode switches** - five Switch tiles (Auto, Dry, Quiet, Fan, Continuous) for explicit mode selection. Tapping one selects that mode and turns the unit on if it was off; tapping the active switch off powers the unit down. Disable via `showModeSwitches: false` in config.
 - **Humidity sensor** - room humidity
 - **Temperature sensor** - ambient temperature (when reported by device)
-- **Water bucket** - `LeakSensor` triggers when water tank fills (works on both Husky and DH models)
+- **Water bucket** - `LeakSensor` triggers when the water tank fills
 - **Air purifier** - clean air mode control (supported models only)
 - **Condensate pump switch** - pump control (supported models only)
 
@@ -119,7 +119,9 @@ Stable and [verified by Homebridge](https://github.com/homebridge/homebridge/wik
 
 ## Support
 
-Tested against Frigidaire Husky and DH series dehumidifiers. If your model isn't supported, or a control doesn't map correctly on your unit, [open an issue](https://github.com/cecnic1989/homebridge-frigidaire-dehumidifier/issues) with your model number and Homebridge debug logs (`homebridge -D`).
+If your dehumidifier works with the Frigidaire mobile app, it should work here.
+
+If your unit isn't picked up, or a control doesn't behave correctly on it, [open an issue](https://github.com/cecnic1989/homebridge-frigidaire-dehumidifier/issues) with your model number and Homebridge debug logs (`homebridge -D`).
 
 ## Development
 
