@@ -1,5 +1,6 @@
 # homebridge-frigidaire-dehumidifier
 
+[![verified-by-homebridge](https://img.shields.io/badge/_-verified-blueviolet?color=%23491F59&style=flat&logoColor=%23FFFFFF&logo=homebridge)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 [![npm version](https://img.shields.io/npm/v/@cecnic1989/homebridge-frigidaire-dehumidifier.svg)](https://www.npmjs.com/package/@cecnic1989/homebridge-frigidaire-dehumidifier)
 [![Build and Lint](https://img.shields.io/github/actions/workflow/status/cecnic1989/homebridge-frigidaire-dehumidifier/build.yml?branch=latest)](https://github.com/cecnic1989/homebridge-frigidaire-dehumidifier/actions/workflows/build.yml)
 
@@ -57,7 +58,11 @@ All other fields optional — see table for defaults.
 
 ## Status
 
-Early release. Read operations (state, humidity, temperature, bucket level) are verified against real devices. Write operations (power, mode, fan speed, target humidity) send commands to the Electrolux command endpoint but are not yet fully validated — use at your own risk and report issues.
+Stable and [verified by Homebridge](https://github.com/homebridge/homebridge/wiki/Verified-Plugins). Read and write operations are validated against real Frigidaire hardware.
+
+## Support
+
+Tested against Frigidaire Husky and DH series dehumidifiers. If your model isn't supported, or a control doesn't map correctly on your unit, [open an issue](https://github.com/cecnic1989/homebridge-frigidaire-dehumidifier/issues) with your model number and Homebridge debug logs (`homebridge -D`).
 
 ## Development
 
@@ -65,7 +70,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, local testing, and design no
 
 ## Acknowledgements
 
-Architecture inspired by [`haywirecoder/homebridge-frigidaire-dehumidifier`](https://github.com/haywirecoder/homebridge-frigidaire-dehumidifier) (archived). This plugin uses the current Electrolux OCP API rather than the deprecated Frigidaire v2 API the archived plugin targeted.
+Architecture inspired by [`haywirecoder/homebridge-frigidaire-dehumidifier`](https://github.com/haywirecoder/homebridge-frigidaire-dehumidifier) (archived). This plugin uses the current Electrolux OCP API rather than the deprecated Frigidaire v2 API the archived plugin targeted. As of July 2026 this plugin replaced the archived one on the Homebridge [verified plugins](https://github.com/homebridge/homebridge/wiki/Verified-Plugins) list.
 
 ## License
 
