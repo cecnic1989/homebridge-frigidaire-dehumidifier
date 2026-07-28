@@ -1,6 +1,6 @@
 {
   "name": "@cecnic1989/homebridge-frigidaire-dehumidifier",
-  "displayName": "Frigidaire Dehumidifier",
+  "displayName": "Homebridge Frigidaire Dehumidifier",
   "type": "module",
   "version": "1.0.0",
   "description": "Homebridge plugin for Frigidaire/Electrolux dehumidifiers via the Electrolux OCP API",
