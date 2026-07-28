@@ -4,7 +4,7 @@
   "type": "module",
   "version": "1.0.1",
   "description": "Homebridge plugin for Frigidaire/Electrolux dehumidifiers via the Electrolux OCP API",
-  "author": "",
+  "author": "cecnic1989",
   "license": "Apache-2.0",
   "homepage": "https://github.com/cecnic1989/homebridge-frigidaire-dehumidifier#readme",
   "repository": {
