@@ -14,15 +14,15 @@ Homebridge plugin for Frigidaire / Electrolux smart dehumidifiers. Exposes your 
 
 Each physical dehumidifier is split into multiple Home app tiles so each sensor and control can be individually named, moved between rooms, and used in HomeKit automations:
 
-- **Dehumidifier** — power, target humidity, fan speed, child lock, filter indicator. The main tile's Auto/Dehumidify toggle mirrors the active mode.
-- **Mode switches** — five Switch tiles (Auto, Dry, Quiet, Fan, Continuous) for explicit mode selection. Tapping one selects that mode and turns the unit on if it was off; tapping the active switch off powers the unit down. Disable via `showModeSwitches: false` in config.
-- **Humidity sensor** — room humidity
-- **Temperature sensor** — ambient temperature (when reported by device)
-- **Water bucket** — `LeakSensor` triggers when water tank fills (works on both Husky and DH models)
-- **Air purifier** — clean air mode control (supported models only)
-- **Condensate pump switch** — pump control (supported models only)
+- **Dehumidifier** - power, target humidity, fan speed, child lock, filter indicator. The main tile's Auto/Dehumidify toggle mirrors the active mode.
+- **Mode switches** - five Switch tiles (Auto, Dry, Quiet, Fan, Continuous) for explicit mode selection. Tapping one selects that mode and turns the unit on if it was off; tapping the active switch off powers the unit down. Disable via `showModeSwitches: false` in config.
+- **Humidity sensor** - room humidity
+- **Temperature sensor** - ambient temperature (when reported by device)
+- **Water bucket** - `LeakSensor` triggers when water tank fills (works on both Husky and DH models)
+- **Air purifier** - clean air mode control (supported models only)
+- **Condensate pump switch** - pump control (supported models only)
 
-Optionally, the plugin can also send **phone notifications** when something needs attention — a full bucket, humidity climbing, a dirty filter. See [Notifications](#notifications).
+Optionally, the plugin can also send **phone notifications** when something needs attention - a full bucket, humidity climbing, a dirty filter. See [Notifications](#notifications).
 
 ## Requirements
 
@@ -61,18 +61,18 @@ Everything else is optional:
 | `auth.password` | required | Frigidaire account password |
 | `pollInterval` | `90` | How often to check the device, in seconds (min 15, max 3600) |
 | `showModeSwitches` | `true` | Whether to expose mode-selection Switch tiles in HomeKit |
-| `notifications` | off | Phone alerts when something needs attention — see [Notifications](#notifications) |
+| `notifications` | off | Phone alerts when something needs attention - see [Notifications](#notifications) |
 
 The easiest way to set all of this is the Homebridge UI's settings form for the plugin, which lists every option with descriptions.
 
 ## Notifications
 
-The plugin can watch your dehumidifier and send a notification to your phone when something looks wrong — the bucket fills up, humidity keeps climbing, the filter needs cleaning.
+The plugin can watch your dehumidifier and send a notification to your phone when something looks wrong - the bucket fills up, humidity keeps climbing, the filter needs cleaning.
 
 The simplest way to receive them is [ntfy.sh](https://ntfy.sh), a free notification service that needs no account:
 
 1. Install the **ntfy** app on your phone (iOS or Android).
-2. In the app, subscribe to a topic — any name you invent, for example `my-dehumidifier`. Pick something hard to guess, since anyone who knows the name can read your alerts.
+2. In the app, subscribe to a topic - any name you invent, for example `my-dehumidifier`. Pick something hard to guess, since anyone who knows the name can read your alerts.
 3. In the plugin settings, turn on notifications and set the URL to `https://ntfy.sh/my-dehumidifier`.
 
 ```json
@@ -82,7 +82,7 @@ The simplest way to receive them is [ntfy.sh](https://ntfy.sh), a free notificat
 }
 ```
 
-That's it — alerts now arrive as phone notifications. Any service that accepts a web request works too, if you'd rather use something else.
+That's it - alerts now arrive as phone notifications. Any service that accepts a web request works too, if you'd rather use something else.
 
 ### What it alerts on
 
@@ -90,7 +90,7 @@ That's it — alerts now arrive as phone notifications. Any service that accepts
 |---|---|
 | `bucketFull` | The water tank is full |
 | `highHumidity` | Room humidity goes above your threshold (default 60%) |
-| `humiditySpike` | Humidity jumps suddenly — 15% or more in about 5 minutes |
+| `humiditySpike` | Humidity jumps suddenly - 15% or more in about 5 minutes |
 | `humidityRising` | Humidity keeps climbing even though the unit is running |
 | `notReachingTarget` | The unit hasn't reached your target humidity after an hour |
 | `runningTooLong` | The unit has run non-stop for 12 hours |
@@ -108,7 +108,7 @@ All are on by default once notifications are enabled. Turn any of them off indiv
 | `notifications.cooldownMinutes` | `60` | Minimum wait before repeating the same alert, so an ongoing problem doesn't flood your phone |
 | `notifications.humidityThreshold` | `60` | The humidity percentage that triggers the high-humidity alert |
 | `notifications.title` | `Dehumidifier Monitor` | The heading shown on the notification |
-| `notifications.priority` | `high` | How insistently your phone announces it — `min`, `low`, `default`, `high`, or `max` |
+| `notifications.priority` | `high` | How insistently your phone announces it - `min`, `low`, `default`, `high`, or `max` |
 | `notifications.tags` | `droplet` | Emoji shown next to the notification in ntfy |
 
 Since `bucketFull` is also a HomeKit leak sensor, you may want to turn that one off to avoid being told twice.

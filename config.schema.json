@@ -82,7 +82,7 @@
             "title": "Notification Title",
             "type": "string",
             "default": "Dehumidifier Monitor",
-            "description": "Sent as the `Title` header — ntfy uses this as the notification title."
+            "description": "Sent as the `Title` header - ntfy uses this as the notification title."
           },
           "priority": {
             "title": "Priority",
@@ -101,13 +101,13 @@
             "title": "Tags",
             "type": "string",
             "default": "droplet",
-            "description": "Sent as the `Tags` header — comma-separated. ntfy renders these as emoji."
+            "description": "Sent as the `Tags` header - comma-separated. ntfy renders these as emoji."
           },
           "alerts": {
             "type": "object",
             "title": "Alert Types",
             "properties": {
-              "bucketFull": { "title": "Bucket full", "type": "boolean", "default": true, "description": "Already exposed as a HomeKit LeakSensor — disable to avoid duplicate signals." },
+              "bucketFull": { "title": "Bucket full", "type": "boolean", "default": true, "description": "Already exposed as a HomeKit LeakSensor - disable to avoid duplicate signals." },
               "highHumidity": { "title": "High humidity", "type": "boolean", "default": true },
               "filterDirty": { "title": "Filter needs attention", "type": "boolean", "default": true },
               "deviceOff": { "title": "Unit turned off unexpectedly", "type": "boolean", "default": true },
