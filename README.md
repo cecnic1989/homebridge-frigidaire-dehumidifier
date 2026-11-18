@@ -67,7 +67,7 @@ The easiest way to set all of this is the Homebridge UI's settings form for the 
 
 ## Notifications
 
-The plugin can watch your dehumidifier and send a notification to your phone when something looks wrong - the bucket fills up, humidity keeps climbing, the filter needs cleaning.
+The plugin can watch your dehumidifier and send a notification to your phone when something looks wrong - the bucket fills up, humidity keeps climbing, the filter needs cleaning. Each message starts with that unit's name, so you can tell which dehumidifier it came from.
 
 The simplest way to receive them is [ntfy.sh](https://ntfy.sh), a free notification service that needs no account:
 
@@ -105,7 +105,7 @@ All are on by default once notifications are enabled. Turn any of them off indiv
 
 | Field | Default | Description |
 |---|---|---|
-| `notifications.cooldownMinutes` | `60` | Minimum wait before repeating the same alert, so an ongoing problem doesn't flood your phone |
+| `notifications.cooldownMinutes` | `60` | Minimum wait before repeating the same alert on the same dehumidifier, so an ongoing problem doesn't flood your phone. API errors, which are not tied to one unit, have their own timer |
 | `notifications.humidityThreshold` | `60` | The humidity percentage that triggers the high-humidity alert |
 | `notifications.title` | `Dehumidifier Monitor` | The heading shown on the notification |
 | `notifications.priority` | `high` | How insistently your phone announces it - `min`, `low`, `default`, `high`, or `max` |

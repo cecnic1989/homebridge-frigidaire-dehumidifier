@@ -25,9 +25,13 @@ const FREEZE_TEMP_C = 5;
 export interface AlertCheckerInput {
   reported: DehumidifierState;
   isOnline: boolean;
+  /** Frigidaire appliance name. Omitted or blank keeps the generic prefix. */
+  applianceName?: string;
 }
 
 export class AlertChecker {
+  private label = 'DEHUMIDIFIER';
+
   constructor(
     private readonly config: AlertCheckerConfig,
     private readonly state: AlertState,
@@ -37,6 +41,7 @@ export class AlertChecker {
 
   checkAppliance(input: AlertCheckerInput): Alert[] {
     const { reported, isOnline } = input;
+    this.label = input.applianceName?.trim() || 'DEHUMIDIFIER';
     const currentPower = (reported.applianceState ?? '').toUpperCase();
     const isRunning = currentPower === 'RUNNING';
     const prevPower = this.state.previousPowerState ?? '';
@@ -91,7 +96,7 @@ export class AlertChecker {
     if (!tankFull && !bucketFull) {
       return;
     }
-    this.maybeAlert(alerts, 'bucket_full', 'DEHUMIDIFIER: Bucket is full. Please empty it.');
+    this.maybeAlert(alerts, 'bucket_full', 'Bucket is full. Please empty it.');
   }
 
   private checkHumidity(alerts: Alert[], s: DehumidifierState): void {
@@ -104,7 +109,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'high_humidity',
-      `DEHUMIDIFIER: Humidity at ${s.sensorHumidity}% (threshold: ${this.config.humidityThreshold}%). Check basement.`,
+      `Humidity at ${s.sensorHumidity}% (threshold: ${this.config.humidityThreshold}%). Check basement.`,
     );
   }
 
@@ -117,9 +122,9 @@ export class AlertChecker {
       return;
     }
     const messages: Record<string, string> = {
-      CLEAN: 'DEHUMIDIFIER: Filter needs cleaning.',
-      CHANGE: 'DEHUMIDIFIER: Filter needs to be changed.',
-      BUY: 'DEHUMIDIFIER: Filter needs replacement — please order a new one.',
+      CLEAN: 'Filter needs cleaning.',
+      CHANGE: 'Filter needs to be changed.',
+      BUY: 'Filter needs replacement — please order a new one.',
     };
     this.maybeAlert(alerts, 'filter_dirty', messages[status]);
   }
@@ -134,7 +139,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'device_off',
-      'DEHUMIDIFIER: Unit turned off unexpectedly. May need attention.',
+      'Unit turned off unexpectedly. May need attention.',
     );
   }
 
@@ -148,7 +153,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'device_offline',
-      'DEHUMIDIFIER: Device is offline. Check WiFi or power.',
+      'Device is offline. Check WiFi or power.',
     );
   }
 
@@ -176,7 +181,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'humidity_spike',
-      `DEHUMIDIFIER: Humidity spiked +${jump}% (from ${prev.humidity}% to ${currentHumidity}%). Possible water event.`,
+      `Humidity spiked +${jump}% (from ${prev.humidity}% to ${currentHumidity}%). Possible water event.`,
     );
   }
 
@@ -213,7 +218,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'humidity_rising',
-      `DEHUMIDIFIER: Humidity rising to ${currentHumidity}% despite unit running. Check for open doors/windows.`,
+      `Humidity rising to ${currentHumidity}% despite unit running. Check for open doors/windows.`,
     );
   }
 
@@ -239,7 +244,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'not_reaching_target',
-      `DEHUMIDIFIER: Running 1+ hour but humidity at ${s.sensorHumidity}% (target: ${s.targetHumidity}%). Unit may be struggling.`,
+      `Running 1+ hour but humidity at ${s.sensorHumidity}% (target: ${s.targetHumidity}%). Unit may be struggling.`,
     );
   }
 
@@ -266,7 +271,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'running_too_long',
-      `DEHUMIDIFIER: Running continuously for ~${hours}h. Check if this is expected.`,
+      `Running continuously for ~${hours}h. Check if this is expected.`,
     );
   }
 
@@ -282,7 +287,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'frequent_cycling',
-      'DEHUMIDIFIER: Unit cycling on/off frequently. May indicate a problem.',
+      'Unit cycling on/off frequently. May indicate a problem.',
     );
   }
 
@@ -308,7 +313,7 @@ export class AlertChecker {
     this.maybeAlert(
       alerts,
       'freeze_warning',
-      `DEHUMIDIFIER: Ambient temperature is ${tempF}°F. Running near freezing can damage the compressor.`,
+      `Ambient temperature is ${tempF}°F. Running near freezing can damage the compressor.`,
     );
   }
 
@@ -347,8 +352,10 @@ export class AlertChecker {
       return;
     }
     this.state.lastSent[type] = Date.now();
-    alerts.push({ type, message });
-    this.log.info('ALERT [%s]: %s', type, message);
+    // API failures belong to the account, not one dehumidifier.
+    const text = type === 'api_error' ? message : `${this.label}: ${message}`;
+    alerts.push({ type, message: text });
+    this.log.info('ALERT [%s]: %s', type, text);
   }
 
   private enabled(key: keyof AlertEnabledMap): boolean {
