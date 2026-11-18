@@ -68,7 +68,7 @@
             "type": "integer",
             "default": 60,
             "minimum": 1,
-            "description": "Minimum time between repeats of the same alert type."
+            "description": "Minimum time between repeats of the same alert on the same dehumidifier. API errors use their own timer."
           },
           "humidityThreshold": {
             "title": "High-humidity Threshold (%)",

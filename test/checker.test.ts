@@ -248,12 +248,48 @@ describe('AlertChecker — cooldown', () => {
   });
 });
 
+describe('AlertChecker — appliance name', () => {
+  test('filter alert names the unit that needs attention', () => {
+    const { checker } = newChecker();
+    const a = checker.checkAppliance({
+      reported: baseState({ filterState: 'CHANGE' }),
+      isOnline: true,
+      applianceName: 'Basement',
+    });
+    const alert = a.find((x) => x.type === 'filter_dirty');
+    assert.equal(alert?.message, 'Basement: Filter needs to be changed.');
+  });
+
+  test('blank appliance name keeps the DEHUMIDIFIER prefix', () => {
+    const { checker } = newChecker();
+    const a = checker.checkAppliance({
+      reported: baseState({ waterTankFull: 'YES' }),
+      isOnline: true,
+      applianceName: '   ',
+    });
+    assert.equal(a[0].message, 'DEHUMIDIFIER: Bucket is full. Please empty it.');
+  });
+
+  test('api errors stay account-level after a named appliance check', () => {
+    const { checker } = newChecker();
+    checker.checkAppliance({
+      reported: baseState(),
+      isOnline: true,
+      applianceName: 'Basement',
+    });
+    const a = checker.checkAPIError('Dehumidifier Monitor: API error — boom');
+    assert.equal(a.length, 1);
+    assert.equal(a[0].message, 'Dehumidifier Monitor: API error — boom');
+  });
+});
+
 describe('AlertChecker — checkAPIError', () => {
   test('fires by default', () => {
     const { checker } = newChecker();
     const a = checker.checkAPIError('boom');
     assert.equal(a.length, 1);
     assert.equal(a[0].type, 'api_error');
+    assert.equal(a[0].message, 'boom');
   });
 
   test('suppressed when alerts.apiError === false', () => {

@@ -14,7 +14,8 @@ import { BucketFullAccessory } from './accessories/bucketFullAccessory.js';
 import { AirPurifierAccessory } from './accessories/airPurifierAccessory.js';
 import { PumpSwitchAccessory } from './accessories/pumpSwitchAccessory.js';
 import { AlertChecker } from './alerts/checker.js';
-import { loadAlertState, saveAlertState } from './alerts/state.js';
+import { loadAlertStateStore, saveAlertStateStore, takeApplianceState, type AlertStateStore } from './alerts/state.js';
+import type { AlertCheckerConfig } from './alerts/types.js';
 import { WebhookNotifier } from './alerts/webhookNotifier.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 
@@ -47,7 +48,11 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
   public client!: ElectroluxClient;
   private pollTimer?: ReturnType<typeof setInterval>;
   public readonly pluginConfig: FrigidaireDehumidifierConfig;
-  private alertChecker?: AlertChecker;
+  private alertConfig?: AlertCheckerConfig;
+  private alertStore?: AlertStateStore;
+  private alertStatePath?: string;
+  private readonly applianceCheckers = new Map<string, AlertChecker>();
+  private apiChecker?: AlertChecker;
   private notifier?: WebhookNotifier;
 
   constructor(
@@ -124,20 +129,52 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       log: this.log,
     });
 
-    const statePath = join(this.api.user.storagePath(), ALERT_STATE_FILENAME);
-    const state = loadAlertState(statePath, this.log);
-    this.alertChecker = new AlertChecker(
-      {
-        cooldownMs: (cfg.cooldownMinutes ?? 60) * 60 * 1000,
-        humidityThreshold: cfg.humidityThreshold ?? 60,
-        alerts: cfg.alerts ?? {},
-      },
-      state,
+    this.alertStatePath = join(this.api.user.storagePath(), ALERT_STATE_FILENAME);
+    this.alertStore = loadAlertStateStore(this.alertStatePath, this.log);
+    this.alertConfig = {
+      cooldownMs: (cfg.cooldownMinutes ?? 60) * 60 * 1000,
+      humidityThreshold: cfg.humidityThreshold ?? 60,
+      alerts: cfg.alerts ?? {},
+    };
+    this.apiChecker = new AlertChecker(
+      this.alertConfig,
+      this.alertStore.api,
       this.log,
-      () => saveAlertState(statePath, state, this.log),
+      () => this.persistAlertState(),
     );
 
     this.log.info('Notifications enabled — POSTing alerts to %s', cfg.url);
+  }
+
+  private persistAlertState(): void {
+    if (!this.alertStatePath || !this.alertStore) {
+      return;
+    }
+    saveAlertStateStore(this.alertStatePath, this.alertStore, this.log);
+  }
+
+  private alertCheckerFor(applianceId: string, applianceCount: number): AlertChecker | undefined {
+    const existing = this.applianceCheckers.get(applianceId);
+    if (existing) {
+      return existing;
+    }
+    const config = this.alertConfig;
+    const store = this.alertStore;
+    if (!config || !store) {
+      return undefined;
+    }
+    const { state, legacyAction } = takeApplianceState(store, applianceId, applianceCount);
+    if (legacyAction === 'discarded') {
+      this.log.info(
+        'Multiple dehumidifiers on this account; tracking alert history separately for each unit.',
+      );
+    }
+    if (legacyAction !== 'none') {
+      this.persistAlertState();
+    }
+    const checker = new AlertChecker(config, state, this.log, () => this.persistAlertState());
+    this.applianceCheckers.set(applianceId, checker);
+    return checker;
   }
 
   configureAccessory(accessory: PlatformAccessory) {
@@ -341,7 +378,7 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       const msg = (err as Error).message;
       this.log.error('Poll failed:', msg);
       await this.dispatchAlerts(
-        this.alertChecker?.checkAPIError(`Dehumidifier Monitor: API error — ${msg}`),
+        this.apiChecker?.checkAPIError(`Dehumidifier Monitor: API error — ${msg}`),
       );
       return;
     }
@@ -363,12 +400,17 @@ export class FrigidaireDehumidifierPlatform implements DynamicPlatformPlugin {
       this.airPurifierAccessories.get(id)?.refreshState(reported);
       this.pumpSwitchAccessories.get(id)?.refreshState(reported);
 
-      if (!this.alertChecker) {
+      const checker = this.alertCheckerFor(appliance.applianceId, appliances.length);
+      if (!checker) {
         continue;
       }
       try {
         const isOnline = !appliance.connectionState || appliance.connectionState.toLowerCase() !== 'disconnected';
-        const alerts = this.alertChecker.checkAppliance({ reported, isOnline });
+        const alerts = checker.checkAppliance({
+          reported,
+          isOnline,
+          applianceName: appliance.applianceData.applianceName,
+        });
         await this.dispatchAlerts(alerts);
       } catch (err) {
         this.log.warn('Alert check failed for %s: %s', appliance.applianceData.applianceName, (err as Error).message);
